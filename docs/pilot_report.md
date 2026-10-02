@@ -5,6 +5,96 @@ Timings were also measured in the Linux VM that your desktop app exposes (4 vCPU
 Neither machine is macOS, so every timing is a proxy. Please re-run `python execute_project.py bench` natively.
 Runs from the early stages used r = 1e-6 and the matmul path for p = 2. Later stages use r = 1e-12 and the direct kernel (see section 5 and 6).
 
+## Glossary of symbols and terms
+Every symbol and abbreviation used in this report is defined here. The two tasks are the recall task (MQAR) and the language model (LM).
+
+### Experimental design
+* **Arm**: one score function being compared. There are nine: `dot_tied`, `lp_1`, `lp_1.5`, `lp_2`, `lp_3`, `lp_4`, `lp_8`, `lp_inf`, and `dot_untied`. The name `lp_p` means the negative L^p distance with that p. In the text L1, L2, L8 and L-inf (or L-infinity) are short for `lp_1`, `lp_2`, `lp_8` and `lp_inf`.
+* **Tied / untied**: tied means queries and keys use the same projection, W_Q = W_K. Untied means separate W_Q and W_K, as in a standard transformer. Only `dot_untied` is untied.
+* **dot**: the dot-product score. "dot" alone means `dot_tied` unless the text says untied.
+* **L^p arms**: the seven distance arms (p = 1, 1.5, 2, 3, 4, 8, infinity).
+* **Cell**: one (P, D) combination of the recall task, for example (P=64, D=2). Cells are written (P, D).
+* **Run**: one training of one arm in one cell (or one LM configuration) with one seed.
+* **Seed (s0, s100, ...)**: the number that fixes initialisation and the data stream of a run. Seeds are paired: every arm with the same seed shares the same data and the same initial values for the parameters it has in common.
+* **Paired difference**: for one seed, the metric of one arm minus the metric of another arm, for example L2 minus dot. The report gives the mean and the standard deviation (sd) of this difference over seeds.
+* **sd**: standard deviation across seeds.
+* **Minimal detectable difference (MDE)**: the smallest true difference a paired t-test would detect with 80% power. It is quoted in units of the sd of the paired difference. "Uncorrected" means a single test at the 5% level. "Seven-comparison correction" means the Holm correction over the seven distance arms.
+* **Transition region**: the range of P (at fixed D) where accuracy falls from near 1 to near chance.
+
+### Recall task (MQAR variant A)
+* **P**: number of key-value pairs in the context of one sequence. It is the difficulty knob.
+* **Q**: number of queries per sequence. Always Q = P/2.
+* **Sequence length**: P + Q positions. The first P positions hold the context pairs. The last Q positions are queries.
+* **Context pair [k, v]**: one context token. Its embedding is the key embedding plus the value embedding.
+* **Query [k, _]**: a query token. It has the same key embedding as in the context and a special blank value embedding. The model must output the value that was paired with k.
+* **Keys and values**: 256 distinct key symbols and 64 distinct value symbols. Keys in one sequence are distinct. Values are drawn with replacement. The output is a classification over the 64 values.
+* **Chance**: 1/64 = 0.0156, the accuracy of a model that cannot see the context.
+* **Key-blind baseline**: the accuracy of guessing a random value from the context, 1/P + (1 - 1/P)/64.
+* **1024 keys**: the extended vocabulary used only for the probes at P = 128 and 256. Keys must stay distinct inside a sequence, so 256 keys is too few there.
+* **Query-to-context mask**: each query attends only to the P context tokens. It does not attend to other queries or to itself.
+* **Accuracy**: the fraction of queries answered correctly on the fixed test set (5000 sequences, identical for all arms).
+* **Top-1 attention**: the fraction of queries whose largest attention weight falls on the correct context pair.
+* **Steps to 99%**: the first evaluation step (every 100 steps) at which validation accuracy reaches 0.99. Steps to 50% and 90% are defined the same way.
+* **Hub measure**: the correlation across context tokens between key norm and the attention they receive. A positive value means long keys act as hubs.
+* **Shuffle check / no-context check**: sanity tests. Shuffling the order of the context pairs must not change accuracy. Removing the context must give chance.
+
+### Models
+* **d_model**: width of the residual stream and of the embeddings. Both tasks use 64.
+* **H**: number of attention heads. The recall task has H = 1. The LM has H = 4.
+* **D**: head dimension, the dimension of the space where queries and keys are compared. The recall task sweeps D in {1, 2, 3, 4, 6, 8, 16}. The LM uses D = 16 (4 heads of 16).
+* **z, z_q, z_k**: the query and key vectors after the projection (D numbers each). With tied projections z_q and z_k come from the same matrix.
+* **Layer (1 / 2)**: the LM has two attention layers. The recall model has one.
+* **MLP**: the feed-forward block in a transformer layer. The recall model has none. The LM has one per layer, with width 4 x d_model.
+* **Learned absolute positions**: one trained vector per position added to the embedding. Only the LM uses them.
+* **Diagonal masked**: a position may not attend to itself (position 0 may, so it has something to attend to). This applies to the LM.
+* **Causal mask**: a position may attend only to earlier positions.
+* **Logit**: the raw attention score before the softmax.
+* **Max |logit|**: the largest absolute logit seen in a batch. Large values signal unstable attention.
+* **Attention entropy**: the entropy of the softmax weights, in nats. A value of 0 means all weight sits on one key. The maximum is the log of the number of allowed keys.
+* **q norm**: the length of the query vector. Growth of this norm is one symptom of instability.
+
+### Score function and its constants
+* **p**: the exponent of the L^p distance. The grid is 1, 1.5, 2, 3, 4, 8 and infinity.
+* **Distance score**: logit = -beta x c x dist, where dist = (S + eps)^(1/p).
+* **S**: the sum inside the root, S = sum over the D coordinates of |z_q - z_k|^p. For p = infinity, dist is the largest coordinate difference instead.
+* **eps**: a small number added inside the root so the gradient is finite at distance zero.
+* **r**: the relative size of eps. eps = r x S_typ. The proposed value is r = 1e-12.
+* **S_typ**: the typical value of S, measured on real batches at initialisation and then frozen. It is given per arm and per layer.
+* **Dot score**: logit = beta x c x (z_q . z_k).
+* **beta**: a learnable scale per head, beta = exp(log_beta), initial value 1.
+* **c**: a frozen calibration constant per arm, layer and configuration. It is chosen so that the standard deviation of the logit across allowed keys equals the target spread at initialisation.
+* **Target spread**: the standard deviation of the logits that calibration aims for. It is provisionally 1.
+* **Calibration**: the measurement of c and S_typ on fixed batches with a calibration-seed model.
+* **1/sqrt(D)**: the standard dot-product scaling. The calibrated dot constant should land near it. For D = 16 it is 0.25.
+* **Matched pair**: a query and the context key that holds its answer.
+
+### Training
+* **lr**: learning rate, the peak step size of the optimiser. Written as 1e-3 = 0.001, 3e-2 = 0.03.
+* **Schedule**: 100 warm-up steps with a rising rate, then cosine decay to 10% of the peak.
+* **Step**: one optimiser update on one batch.
+* **B**: batch size. The LM uses B = 64 sequences. The recall task uses B = 128.
+* **T**: LM context length, the number of characters per training sequence. T = 64.
+* **Steps per run**: 2500 for the LM (about 10M characters seen) and 3000 for recall.
+* **AdamW, weight decay (wd), clipping**: AdamW is the optimiser with betas (0.9, 0.99). Weight decay is 0.01 on matrices. Clipping rescales the gradient when its norm exceeds 1.0.
+* **Pre-clip norm**: the gradient norm before clipping. If it often exceeds 1.0, clipping is active.
+* **Divergence**: a loss that becomes non-finite or explodes. None occurred in the pilot.
+* **Chunk**: the number of queries processed at a time by the custom distance kernel. It trades speed for memory. The default is 4.
+* **Causal block skipping**: the kernel skips key blocks that no query in the chunk may attend to. It saves 30 to 50% in the LM.
+* **Custom / checkpointed / naive**: three implementations of the distance. Naive uses plain autograd and is the reference. Checkpointed recomputes pieces in the backward pass. Custom is the hand-written autograd function with an analytic backward.
+* **Matmul path (p = 2)**: computing the L2 distance from |a|^2 + |b|^2 - 2 a.b. It is fast but loses accuracy at small D. The direct path computes the differences explicitly.
+* **Peak RSS**: the largest resident memory of the process, in MB.
+* **Workers**: parallel training processes, each on one thread.
+
+### Metrics
+* **bpc**: bits per character, the LM cross-entropy in bits. Lower is better. Validation bpc is measured on fixed windows of the held-out 10% of the text. A uniform guess over 65 characters would give 6.02 bpc.
+* **Tiny Shakespeare**: the LM corpus. It has 1,115,394 characters and 65 distinct symbols.
+* **Test accuracy (recall)**: see Accuracy above.
+
+### Files
+* `results/pilot/*.json`: summaries of each pilot stage.
+* `results/pilot/<run id>/`: one directory per run, with `result.json` and `final.pt` (final weights). A run id looks like `mqar_P64_D3_dot_tied_s0`: task, P, D, arm, seed.
+* `execute_project.py`: the single entry point that runs every stage.
+
 ## 1. Environment
 torch 2.2.2 and numpy 1.26 work in both environments, and a smoke training step runs for both tasks and the dot, L^3 and L-infinity arms.
 Python must be 3.10 to 3.12. `requirements.txt` pins torch 2.2.2 and numpy<2.
