@@ -1,0 +1,7 @@
+# macOS Intel: the last PyTorch wheels are 2.2.2 (Python 3.10-3.12). numpy must stay < 2 for torch 2.2.2.
+torch==2.2.2
+numpy<2
+scipy
+pandas
+matplotlib
+pytest

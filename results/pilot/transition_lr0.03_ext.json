@@ -1,0 +1,151 @@
+{
+ "arms": [
+  "dot_tied",
+  "lp_2"
+ ],
+ "Ps": [
+  128,
+  256
+ ],
+ "Ds": [
+  2,
+  3
+ ],
+ "steps": 3000,
+ "seed": 0,
+ "cells": {
+  "P128_D2": {
+   "P": 128,
+   "D": 2,
+   "arms": {
+    "dot_tied": {
+     "test_acc": 0.329840625,
+     "steps_to_90": null,
+     "wall": 228.23712396621704,
+     "baselines": {
+      "chance": 0.015625,
+      "key_blind": 0.0233154296875
+     },
+     "diverged": false
+    },
+    "lp_2": {
+     "test_acc": 0.999975,
+     "steps_to_90": 400,
+     "wall": 557.1282644271851,
+     "baselines": {
+      "chance": 0.015625,
+      "key_blind": 0.0233154296875
+     },
+     "diverged": false
+    }
+   }
+  },
+  "P128_D3": {
+   "P": 128,
+   "D": 3,
+   "arms": {
+    "dot_tied": {
+     "test_acc": 0.98486875,
+     "steps_to_90": 2500,
+     "wall": 236.55165243148804,
+     "baselines": {
+      "chance": 0.015625,
+      "key_blind": 0.0233154296875
+     },
+     "diverged": false
+    },
+    "lp_2": {
+     "test_acc": 0.999996875,
+     "steps_to_90": 200,
+     "wall": 424.2316675186157,
+     "baselines": {
+      "chance": 0.015625,
+      "key_blind": 0.0233154296875
+     },
+     "diverged": false
+    }
+   }
+  },
+  "P256_D2": {
+   "P": 256,
+   "D": 2,
+   "arms": {
+    "dot_tied": {
+     "test_acc": 0.279240625,
+     "steps_to_90": null,
+     "wall": 642.5810496807098,
+     "baselines": {
+      "chance": 0.015625,
+      "key_blind": 0.01947021484375
+     },
+     "diverged": false
+    },
+    "lp_2": {
+     "test_acc": 0.9856078125,
+     "steps_to_90": 500,
+     "wall": 1925.132907629013,
+     "baselines": {
+      "chance": 0.015625,
+      "key_blind": 0.01947021484375
+     },
+     "diverged": false
+    }
+   }
+  },
+  "P256_D3": {
+   "P": 256,
+   "D": 3,
+   "arms": {
+    "dot_tied": {
+     "test_acc": 0.3358546875,
+     "steps_to_90": null,
+     "wall": 664.2169349193573,
+     "baselines": {
+      "chance": 0.015625,
+      "key_blind": 0.01947021484375
+     },
+     "diverged": false
+    },
+    "lp_2": {
+     "test_acc": 1.0,
+     "steps_to_90": 200,
+     "wall": 1587.0365347862244,
+     "baselines": {
+      "chance": 0.015625,
+      "key_blind": 0.01947021484375
+     },
+     "diverged": false
+    }
+   }
+  }
+ },
+ "summary": {
+  "threshold": 0.9,
+  "P_cross": {
+   "dot_tied": {
+    "2": "<128",
+    "3": 140.1439502009691
+   },
+   "lp_2": {
+    "2": ">256",
+    "3": ">256"
+   }
+  },
+  "D_min_at_P": {
+   "dot_tied": {
+    "128": 3,
+    "256": ">3"
+   },
+   "lp_2": {
+    "128": 2,
+    "256": 2
+   }
+  }
+ },
+ "pilot_cell": {
+  "P": 256,
+  "D": 3
+ },
+ "n_keys": 1024,
+ "lr": 0.03
+}

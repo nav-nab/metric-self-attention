@@ -1,0 +1,172 @@
+{
+ "cells": [
+  {
+   "P": 8,
+   "Q": 4,
+   "n_keys": 256,
+   "n_vals": 64,
+   "vectorised": {
+    "keys_distinct": true,
+    "queries_from_context": true,
+    "each_key_queried_once": true,
+    "answers_consistent": true,
+    "ranges_ok": true,
+    "val_uniform_chi2_p": 0.8473611801036076,
+    "key_uniform_chi2_p": 0.6291662666025426,
+    "queried_position_uniform_chi2_p": 0.46446386981967136,
+    "chance_theory": 0.015625,
+    "chance_sim": 0.0144875,
+    "key_blind_theory": 0.138671875,
+    "key_blind_sim": 0.1377875,
+    "baselines_match": true
+   },
+   "reference": {
+    "keys_distinct": true,
+    "queries_from_context": true,
+    "each_key_queried_once": true,
+    "answers_consistent": true,
+    "ranges_ok": true,
+    "val_uniform_chi2_p": 0.911574512506903,
+    "key_uniform_chi2_p": 0.4313006509369267,
+    "queried_position_uniform_chi2_p": 0.682405966934545,
+    "chance_theory": 0.015625,
+    "chance_sim": 0.0155625,
+    "key_blind_theory": 0.138671875,
+    "key_blind_sim": 0.1389125,
+    "baselines_match": true
+   },
+   "ok": true
+  },
+  {
+   "P": 16,
+   "Q": 8,
+   "n_keys": 256,
+   "n_vals": 64,
+   "vectorised": {
+    "keys_distinct": true,
+    "queries_from_context": true,
+    "each_key_queried_once": true,
+    "answers_consistent": true,
+    "ranges_ok": true,
+    "val_uniform_chi2_p": 0.6125880482244138,
+    "key_uniform_chi2_p": 0.7184516285979865,
+    "queried_position_uniform_chi2_p": 0.9151730715159161,
+    "chance_theory": 0.015625,
+    "chance_sim": 0.01610625,
+    "key_blind_theory": 0.0771484375,
+    "key_blind_sim": 0.07715,
+    "baselines_match": true
+   },
+   "reference": {
+    "keys_distinct": true,
+    "queries_from_context": true,
+    "each_key_queried_once": true,
+    "answers_consistent": true,
+    "ranges_ok": true,
+    "val_uniform_chi2_p": 0.7525382508660375,
+    "key_uniform_chi2_p": 0.6204728154419713,
+    "queried_position_uniform_chi2_p": 0.8584051401137185,
+    "chance_theory": 0.015625,
+    "chance_sim": 0.01563125,
+    "key_blind_theory": 0.0771484375,
+    "key_blind_sim": 0.07735,
+    "baselines_match": true
+   },
+   "ok": true
+  },
+  {
+   "P": 32,
+   "Q": 16,
+   "n_keys": 256,
+   "n_vals": 64,
+   "vectorised": {
+    "keys_distinct": true,
+    "queries_from_context": true,
+    "each_key_queried_once": true,
+    "answers_consistent": true,
+    "ranges_ok": true,
+    "val_uniform_chi2_p": 0.8576961274968378,
+    "key_uniform_chi2_p": 0.9785739221449907,
+    "queried_position_uniform_chi2_p": 0.9933760217441466,
+    "chance_theory": 0.015625,
+    "chance_sim": 0.01510625,
+    "key_blind_theory": 0.04638671875,
+    "key_blind_sim": 0.046615625,
+    "baselines_match": true
+   },
+   "reference": {
+    "keys_distinct": true,
+    "queries_from_context": true,
+    "each_key_queried_once": true,
+    "answers_consistent": true,
+    "ranges_ok": true,
+    "val_uniform_chi2_p": 0.031198401839441146,
+    "key_uniform_chi2_p": 0.7674285921476838,
+    "queried_position_uniform_chi2_p": 0.9495755803948638,
+    "chance_theory": 0.015625,
+    "chance_sim": 0.015621875,
+    "key_blind_theory": 0.04638671875,
+    "key_blind_sim": 0.04611875,
+    "baselines_match": true
+   },
+   "ok": true
+  },
+  {
+   "P": 64,
+   "Q": 32,
+   "n_keys": 256,
+   "n_vals": 64,
+   "vectorised": {
+    "keys_distinct": true,
+    "queries_from_context": true,
+    "each_key_queried_once": true,
+    "answers_consistent": true,
+    "ranges_ok": true,
+    "val_uniform_chi2_p": 0.43647117069501995,
+    "key_uniform_chi2_p": 0.992422689359326,
+    "queried_position_uniform_chi2_p": 0.9999887788755538,
+    "chance_theory": 0.015625,
+    "chance_sim": 0.0156015625,
+    "key_blind_theory": 0.031005859375,
+    "key_blind_sim": 0.03108125,
+    "baselines_match": true
+   },
+   "reference": {
+    "keys_distinct": true,
+    "queries_from_context": true,
+    "each_key_queried_once": true,
+    "answers_consistent": true,
+    "ranges_ok": true,
+    "val_uniform_chi2_p": 0.6643660354384362,
+    "key_uniform_chi2_p": 0.9991465651063253,
+    "queried_position_uniform_chi2_p": 0.9815929391864593,
+    "chance_theory": 0.015625,
+    "chance_sim": 0.0156734375,
+    "key_blind_theory": 0.031005859375,
+    "key_blind_sim": 0.0308359375,
+    "baselines_match": true
+   },
+   "ok": true
+  }
+ ],
+ "ok": true,
+ "fixed_sets_identical": true,
+ "untrained_model_sanity": {
+  "dot_tied": {
+   "acc": 0.0164375,
+   "acc_shuffled": 0.0164375,
+   "acc_no_context": 0.017,
+   "shuffle_abs_diff": 0.0,
+   "chance": 0.015625
+  },
+  "lp_2": {
+   "acc": 0.0171875,
+   "acc_shuffled": 0.0171875,
+   "acc_no_context": 0.017,
+   "shuffle_abs_diff": 0.0,
+   "chance": 0.015625
+  }
+ },
+ "shuffle_invariant": true,
+ "no_context_at_chance": true
+}

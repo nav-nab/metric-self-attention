@@ -1,0 +1,215 @@
+{
+ "run_id": "mqar_P64_D3_dot_tied_s0_lr0.003_long",
+ "arm": "dot_tied",
+ "seed": 0,
+ "task": "mqar",
+ "steps_done": 12000,
+ "diverged": false,
+ "diverged_step": null,
+ "wall_seconds": 415.2336583137512,
+ "constants": [
+  {
+   "layer": 0,
+   "arm": "dot_tied",
+   "std_raw": 1.5986446291208267,
+   "std_raw_per_head": [
+    1.5986446291208267
+   ],
+   "c": 0.6255298906236273,
+   "target": 1.0
+  }
+ ],
+ "P": 64,
+ "D": 3,
+ "Q": 32,
+ "final_val": {
+  "val_acc": 0.80776875,
+  "val_loss": 0.7433741943359375,
+  "val_diag": {
+   "top1_att": 0.7899875,
+   "att_mass_correct": 0.6449177612304687,
+   "entropy": 1.2076884521484375,
+   "margin_logit": 2.162599072265625,
+   "hub_corr": -0.08805779724121093
+  }
+ },
+ "final_test": {
+  "acc": 0.80621875,
+  "loss": 0.7508780395507813
+ },
+ "sanity": {
+  "acc": 0.80776875,
+  "acc_shuffled": 0.80776875,
+  "acc_no_context": 0.0153625,
+  "shuffle_abs_diff": 0.0,
+  "chance": 0.015625
+ },
+ "baselines": {
+  "chance": 0.015625,
+  "key_blind": 0.031005859375
+ },
+ "layers": [
+  {
+   "beta": [
+    6.925386905670166
+   ],
+   "max_abs_logit": [
+    353.179931640625
+   ],
+   "logit_std": [
+    61.13157653808594
+   ],
+   "entropy": [
+    1.174862027168274
+   ],
+   "entropy_uniform": 4.1588826179504395,
+   "q_norm_mean": [
+    4.851396083831787
+   ],
+   "q_norm_max": [
+    8.23623275756836
+   ],
+   "k_norm_mean": [
+    6.138121128082275
+   ],
+   "k_norm_max": [
+    10.128013610839844
+   ]
+  }
+ ],
+ "layers_grad": [
+  {
+   "beta": [
+    6.925386905670166
+   ],
+   "max_abs_logit": [
+    353.179931640625
+   ],
+   "logit_std": [
+    61.13157653808594
+   ],
+   "entropy": [
+    1.174862027168274
+   ],
+   "entropy_uniform": 4.1588826179504395,
+   "q_norm_mean": [
+    4.851396083831787
+   ],
+   "q_norm_max": [
+    8.23623275756836
+   ],
+   "k_norm_mean": [
+    6.138121128082275
+   ],
+   "k_norm_max": [
+    10.128013610839844
+   ],
+   "grad_z_grad_norm_per_head": [
+    0.0030878204852342606
+   ],
+   "grad_frac_dims_active_1pct": 0.9920654296875,
+   "grad_frac_exact_zero": 0.0
+  }
+ ],
+ "curve": [
+  {
+   "step": 500,
+   "val_acc": 0.489328125
+  },
+  {
+   "step": 1000,
+   "val_acc": 0.564609375
+  },
+  {
+   "step": 1500,
+   "val_acc": 0.631640625
+  },
+  {
+   "step": 2000,
+   "val_acc": 0.67978125
+  },
+  {
+   "step": 2500,
+   "val_acc": 0.684390625
+  },
+  {
+   "step": 3000,
+   "val_acc": 0.688359375
+  },
+  {
+   "step": 3500,
+   "val_acc": 0.691578125
+  },
+  {
+   "step": 4000,
+   "val_acc": 0.712921875
+  },
+  {
+   "step": 4500,
+   "val_acc": 0.733734375
+  },
+  {
+   "step": 5000,
+   "val_acc": 0.73965625
+  },
+  {
+   "step": 5500,
+   "val_acc": 0.74553125
+  },
+  {
+   "step": 6000,
+   "val_acc": 0.74809375
+  },
+  {
+   "step": 6500,
+   "val_acc": 0.761671875
+  },
+  {
+   "step": 7000,
+   "val_acc": 0.77540625
+  },
+  {
+   "step": 7500,
+   "val_acc": 0.779390625
+  },
+  {
+   "step": 8000,
+   "val_acc": 0.781828125
+  },
+  {
+   "step": 8500,
+   "val_acc": 0.782375
+  },
+  {
+   "step": 9000,
+   "val_acc": 0.78321875
+  },
+  {
+   "step": 9500,
+   "val_acc": 0.789875
+  },
+  {
+   "step": 10000,
+   "val_acc": 0.798390625
+  },
+  {
+   "step": 10500,
+   "val_acc": 0.802453125
+  },
+  {
+   "step": 11000,
+   "val_acc": 0.805796875
+  },
+  {
+   "step": 11500,
+   "val_acc": 0.80696875
+  },
+  {
+   "step": 12000,
+   "val_acc": 0.807890625
+  }
+ ],
+ "steps_to_50": 1000,
+ "steps_to_90": null,
+ "steps_to_99": null
+}
