@@ -20,6 +20,7 @@ from .scores import CROSSED_ARMS, HEAD_SIZES
 from .train import CKPT_SECONDS, EVAL_EVERY, LOG_EVERY, STEPS, WARMUP, RunSpec, run_training
 from .util import atomic_write_json, atomic_write_text
 
+HEARTBEAT_SECONDS = 60        # a status line about once a minute while runs are going
 SCAN_RATES = (3e-3, 1e-2, 3e-2)
 EXTRA_RATE_LOW = 1e-3         # one more rate, a factor of 3 beyond the grid
 EXTRA_RATE_HIGH = 9e-2
@@ -121,32 +122,71 @@ def _init_worker():
 
 def _work(job):
     messages = []
+    progress_file = job.run_dir / "progress.json"
     try:
+        job.run_dir.mkdir(parents=True, exist_ok=True)
         result = run_training(job.spec, job.run_dir, job.calib_root, ckpt_seconds=job.ckpt_seconds,
-                              log=messages.append)
+                              log=messages.append, progress=lambda info: atomic_write_json(progress_file, info))
         return job.run_dir.name, result, None, messages
     except Exception:
         text = traceback.format_exc()
-        job.run_dir.mkdir(parents=True, exist_ok=True)
         (job.run_dir / "error.txt").write_text(text)
         return job.run_dir.name, None, text, messages
+    finally:
+        if progress_file.exists():
+            progress_file.unlink()
 
 
 def _fmt_time(seconds):
     seconds = int(seconds)
+    if seconds < 3600:
+        return f"{seconds // 60}m{seconds % 60:02d}s"
     return f"{seconds // 3600}h{(seconds % 3600) // 60:02d}m"
 
 
-def run_jobs(jobs, workers, label, log=print):
-    """Run all unfinished jobs, slowest first. Raises SweepError if any run fails."""
+def _active_runs(pending):
+    """The runs that have reported progress and are not finished: [(job, progress dict)]."""
+    active = []
+    for job in pending:
+        if (job.run_dir / "result.json").exists():
+            continue
+        try:
+            info = json.loads((job.run_dir / "progress.json").read_text())
+        except (OSError, ValueError):
+            continue
+        active.append((job, info))
+    return active
+
+
+def format_heartbeat(label, n_done, n_total, active, elapsed, eta):
+    """One status line: runs finished, the runs in progress with their percentage, and the time left."""
+    running = ", ".join(f"{job.run_dir.name} {100 * info['step'] / info['steps']:.0f}%" for job, info in active)
+    left = f"about {_fmt_time(eta)} left" if eta is not None else "estimating the time left"
+    return (f"{label}: {time.strftime('%H:%M')} | {n_done}/{n_total} finished | "
+            f"{running or 'starting'} | elapsed {_fmt_time(elapsed)}, {left}")
+
+
+def run_jobs(jobs, workers, label, log=print, heartbeat_seconds=HEARTBEAT_SECONDS):
+    """Run all unfinished jobs, slowest first. Raises SweepError if any run fails.
+
+    While runs are going, a status line is printed about every heartbeat_seconds.
+    """
     pending = [j for j in jobs if not (j.run_dir / "result.json").exists()]
     pending.sort(key=lambda j: -j.cost)
+    for job in pending:                                  # progress files of an earlier, interrupted session
+        (job.run_dir / "progress.json").unlink(missing_ok=True)
     log(f"{label}: {len(jobs) - len(pending)} of {len(jobs)} runs are finished, {len(pending)} to run")
     if not pending:
         return
     total_cost = sum(j.cost for j in pending)
     done, done_cost, failures, start = 0, 0.0, [], time.time()
     cost_of = {j.run_dir.name: j.cost for j in pending}
+
+    def eta_now(active):
+        """The time left, from the cost-weighted share of work done, including runs in progress."""
+        progressed = done_cost + sum(j.cost * info["step"] / info["steps"] for j, info in active)
+        elapsed = time.time() - start
+        return elapsed / progressed * (total_cost - progressed) if progressed > 0 else None
 
     def report(name, result, error, messages):
         nonlocal done, done_cost
@@ -159,11 +199,11 @@ def run_jobs(jobs, workers, label, log=print):
             failures.append(name)
             log(f"{label}: {name} FAILED, see {name}/error.txt")
             return
-        elapsed = time.time() - start
-        eta = elapsed / done_cost * (total_cost - done_cost) if done_cost else 0
+        eta = eta_now(_active_runs(pending))
         bpc = result["final_val_bpc"]
         shown = "diverged" if result["diverged"] else f"val bpc {bpc:.4f}"
-        log(f"{label}: [{done}/{len(pending)}] {name} {shown}; elapsed {_fmt_time(elapsed)}, about {_fmt_time(eta)} left")
+        left = "" if eta is None else f", about {_fmt_time(eta)} left"
+        log(f"{label}: [{done}/{len(pending)}] {name} {shown}; elapsed {_fmt_time(time.time() - start)}{left}")
 
     if workers <= 1:
         _init_serial()
@@ -172,9 +212,24 @@ def run_jobs(jobs, workers, label, log=print):
     else:
         ctx = multiprocessing.get_context("spawn")
         pool = ctx.Pool(workers, initializer=_init_worker)
+        last_beat = time.time()
+
+        def beat():
+            nonlocal last_beat
+            last_beat = time.time()
+            active = _active_runs(pending)
+            log(format_heartbeat(label, done, len(pending), active, last_beat - start, eta_now(active)))
+
         try:
-            for out in pool.imap_unordered(_work, pending, chunksize=1):
-                report(*out)
+            results = pool.imap_unordered(_work, pending, chunksize=1)
+            while done < len(pending):
+                wait = max(0.05, heartbeat_seconds - (time.time() - last_beat))
+                try:
+                    report(*results.next(timeout=wait))
+                except multiprocessing.TimeoutError:
+                    pass
+                if time.time() - last_beat >= heartbeat_seconds:
+                    beat()
             pool.close()
             pool.join()
         except KeyboardInterrupt:

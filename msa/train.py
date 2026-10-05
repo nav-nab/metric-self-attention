@@ -130,8 +130,11 @@ def _log_csv(rows):
 
 
 def run_training(spec, run_dir, calib_root, ckpt_seconds=CKPT_SECONDS, clock=time.monotonic,
-                 stop_hook=None, log=print):
-    """Train one model and write its files. A finished run is skipped. Returns result.json as a dict."""
+                 stop_hook=None, log=print, progress=None):
+    """Train one model and write its files. A finished run is skipped. Returns result.json as a dict.
+
+    progress, if given, is called with a dict (step, steps, train_loss, val_bpc) at every logged step.
+    """
     run_dir = Path(run_dir)
     result_path = run_dir / "result.json"
     if result_path.exists():
@@ -192,6 +195,9 @@ def run_training(spec, run_dir, calib_root, ckpt_seconds=CKPT_SECONDS, clock=tim
             diag.append({"step": done, "layers": diagnostics(model, windows)})
         if len(row) > 1:
             rows.append(row)
+        if progress is not None and (done % spec.log_every == 0 or done == spec.steps):
+            progress({"step": done, "steps": spec.steps, "val_bpc": final_val,
+                      "train_loss": sum(train_losses[-spec.log_every:]) / len(train_losses[-spec.log_every:])})
         if stop_hook is not None:
             stop_hook(done)
         if done < spec.steps and clock() - last_ckpt >= ckpt_seconds:

@@ -127,3 +127,31 @@ def test_a_failing_run_is_reported_and_does_not_stop_the_others(tmp_path):
     assert "lp_2_D4_lr0.01" in str(err.value)
     assert (scan_dir(tmp_path, cells[0], 1e-2) / "result.json").exists()
     assert "calibrate stage" in (scan_dir(tmp_path, cells[1], 1e-2) / "error.txt").read_text()
+
+
+def test_heartbeat_line_and_progress_files(tmp_path):
+    from msa.sweep import _active_runs, format_heartbeat
+    cells = [Cell("dot_tied", 2)]
+    jobs = scan_jobs(tmp_path, TINY, cells, rates=(1e-2, 3e-2))
+    d = jobs[0].run_dir
+    d.mkdir(parents=True)
+    (d / "progress.json").write_text(json.dumps({"step": 1000, "steps": 4000, "train_loss": 2.5, "val_bpc": None}))
+    (jobs[1].run_dir).mkdir(parents=True)
+    (jobs[1].run_dir / "progress.json").write_text("{broken")           # a half-written file is ignored
+    active = _active_runs(jobs)
+    assert [j.run_dir.name for j, _ in active] == ["dot_tied_D2_lr0.01"]
+    line = format_heartbeat("scan", 3, 141, active, 3725, 7200)
+    assert "3/141 finished" in line and "dot_tied_D2_lr0.01 25%" in line
+    assert "elapsed 1h02m" in line and "about 2h00m left" in line
+    assert "estimating" in format_heartbeat("scan", 0, 5, [], 10, None)
+
+
+def test_a_status_line_is_printed_while_runs_are_going(tmp_path):
+    cells = [Cell("dot_tied", 2), Cell("lp_2", 4)]
+    run_calibration(tmp_path, n_batches=2, combos=[("dot_tied", 2), ("lp_2", 4)], log=lambda m: None)
+    st = Settings(steps=60, warmup=4, eval_every=30, log_every=10, workers=2, ckpt_seconds=600, calibration_batches=2)
+    msgs = []
+    run_jobs(scan_jobs(tmp_path, st, cells, rates=(1e-2,)), 2, "scan", msgs.append, heartbeat_seconds=0.3)
+    beats = [m for m in msgs if "finished |" in m]
+    assert beats and any("%" in m for m in beats)
+    assert not list(tmp_path.rglob("progress.json"))                     # removed when the runs end

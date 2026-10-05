@@ -77,7 +77,7 @@ These values are standard defaults. They are the same for every arm, and only th
 
 ## 7. Speed and parallelism
 
-The estimates came from sandbox runs. About four workers run at once, and each worker uses one thread. **Approved**: the sweep puts the slowest cells first, so that the last runs of a stage are short. The script prints a progress line with the number of finished runs and an estimate of the time remaining. The user should keep the laptop awake during the run, for example with `caffeinate -i` on macOS.
+The estimates came from sandbox runs. About four workers run at once, and each worker uses one thread. **Approved**: the sweep puts the slowest cells first, so that the last runs of a stage are short. The script prints a progress line whenever a run finishes. While runs are going, it also prints a status line about once a minute. The status line gives the number of finished runs, the percentage done of each run in progress, and an estimate of the time remaining. The user should keep the laptop awake during the run, for example with `caffeinate -i` on macOS.
 
 ## 8. Analysis
 
@@ -207,3 +207,7 @@ Each item records a choice that the documents leave open, or a detail of the cod
 28. **Diverged runs.** A diverged main run has no outcome and is a missing value. It is listed in `diverged_runs.csv`. In test 2 its pair is dropped. In test 3 a slope needs at least three head sizes, and the mean over the seven arms needs all seven arms. A contrast in test 4 needs all seven exponents. Test 1 removes the exponent as section 8.1 says.
 29. **Outputs.** The tables are CSV files in `results/analysis/tables/`, and the figures are PNG files in `results/analysis/figures/`. The figures show the mean bpc by head size, the paired gap by head size with the single seeds, the shape of the effect of p at each head size, and the probability that each p is best. The exponents and the head sizes use one-hue ordered ramps, and the arms off the axis use fixed single colours. The stage stops with an error if any of the 235 main runs is missing.
 30. **Smoke test of the analysis.** The two smoke cells are not a full grid. The smoke command therefore writes invented results for all 47 cells into `results/smoke/invented/` and runs the analysis on them. The invented results have a known interaction and a known trend. The unit tests use them too.
+
+**Added after the smoke run.**
+
+31. **Status line every minute. User.** The user asked for continual feedback. Each worker writes a small `progress.json` in its run folder at every logged step (every 50 steps), and the file is removed when the run ends. The main process reads these files and prints a status line every 60 seconds. The estimate of the time left uses the cost table of item 20, weighted by the share of each run that is done. Progress files left by an interrupted session are deleted when the stage starts. The stages with only one worker process print a status line only when a run finishes.

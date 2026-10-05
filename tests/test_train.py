@@ -170,3 +170,11 @@ def test_a_killed_process_resumes_from_its_last_checkpoint(tmp_path, calib):
     assert any("resumed from step" in m for m in msgs) and res["resumes"] == 1
     assert res["final_val_bpc"] == pytest.approx(ref["final_val_bpc"], abs=1e-6)
     assert not list((tmp_path / "killed").glob("*.tmp"))
+
+
+def test_progress_callback_reports_every_logged_step(tmp_path, calib):
+    seen = []
+    run_training(spec_for(), tmp_path / "p", calib, log=lambda m: None, progress=seen.append)
+    assert [s["step"] for s in seen] == [4, 8, 12, 16, 20, 24]
+    assert all(s["steps"] == 24 and math.isfinite(s["train_loss"]) for s in seen)
+    assert seen[0]["val_bpc"] is None and seen[1]["val_bpc"] is not None       # evaluation at step 8
