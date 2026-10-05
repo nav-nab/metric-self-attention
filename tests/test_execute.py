@@ -35,7 +35,11 @@ def test_smoke_uses_a_separate_folder_two_cells_and_tiny_settings(monkeypatch, t
     monkeypatch.setattr(sweep, "run_scan", lambda root, st, cells, log: calls.append(("scan", root)))
     monkeypatch.setattr(sweep, "run_select", lambda root, cells, log: calls.append(("select", root)))
     monkeypatch.setattr(sweep, "run_main", lambda root, st, cells, log: calls.append(("main", root)))
+    from msa import analyze
+    monkeypatch.setattr(analyze, "write_invented_results", lambda root: calls.append(("invented", root)))
+    monkeypatch.setattr(analyze, "run_analysis", lambda root, log: calls.append(("analyze", root)))
     root, st, cells = sweep.run_smoke(tmp_path, log=lambda m: None)
     assert root == tmp_path / "smoke" and len(cells) == 2 and st.steps == 20
-    assert [c[0] for c in calls] == ["calibrate", "scan", "select", "main"]
-    assert all(c[1] == tmp_path / "smoke" for c in calls)
+    assert [c[0] for c in calls] == ["calibrate", "scan", "select", "main", "invented", "analyze"]
+    assert all(c[1] == tmp_path / "smoke" for c in calls[:4])
+    assert all(c[1] == tmp_path / "smoke" / "invented" for c in calls[4:])

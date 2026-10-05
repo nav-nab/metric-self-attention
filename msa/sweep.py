@@ -316,4 +316,8 @@ def run_smoke(root, log=print):
     run_scan(root, st, cells, log)
     run_select(root, cells, log)
     run_main(root, st, cells, log)
+    # The two smoke cells are not a full grid, so the analysis is smoke-tested on invented results.
+    from .analyze import run_analysis, write_invented_results
+    write_invented_results(root / "invented")
+    run_analysis(root / "invented", log=log)
     return root, st, cells

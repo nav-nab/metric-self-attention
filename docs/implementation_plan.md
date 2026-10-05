@@ -85,7 +85,7 @@ The analysis reads only the result files. It needs a library for the mixed model
 
 ### 8.1 The F-test of test 1
 
-**Status.** This is the proposed exact form. It needs the approval of the user before the analysis code is written. The user has chosen the repeated-measures analysis of variance.
+**Status.** The user approved this form on 2026-10-05, and the analysis code follows it.
 
 **Data.** The test uses the final validation bpc of the seven L^p arms. There are five head sizes and five final seeds, so the data are 5 x 5 x 7 = 175 values. Write $y_{s,D,p}$ for the value of seed $s$, head size $D$ and exponent $p$. The two dot arms, the uniform control and the unmasked arm are not part of this test.
 
@@ -159,9 +159,8 @@ The unit tests check the following.
 
 ## 12. Items that still need the user
 
-- Agreement to the smoke run in step 5 of section 10 before it is run.
-- Approval of the written form of the test-1 F-test (section 8) before the analysis code is written. The user has chosen the repeated-measures analysis of variance.
-- Review of any choice in section 13 that the agent flags.
+- The result of the smoke run of step 5, which the user runs on the laptop.
+- Review of any choice in section 13 that the agent flags. Item 25 (no multiplicity correction in test 3) is flagged.
 
 ## 13. Coding decisions (filled in by the implementing agent)
 
@@ -197,3 +196,14 @@ Each item records a choice that the documents leave open, or a detail of the cod
 20. **Order of the runs.** The slowest runs go first. The order uses a fixed table of rough relative costs per arm, scaled by the head size for the distance arms. The table is only a guess. It is used for the order and for the time estimate in the progress line.
 21. **The smoke command.** It uses two cells, the L^8 arm at D = 2 and the tied dot product at D = 4. It runs the calibration with two batches, the scan with its extra runs, the selection and the main stage with two seeds, all at 20 steps with a warm-up of 4 steps. The results go to `results/smoke/`, which is ignored by git. The smoke command has not been run. The analysis will be added to it with step 6, on invented results.
 22. **Tests of the stages.** They check the counts of 47 cells, 141 scan runs and 235 main runs, and the rate rule on a table of cases. One test runs all stages on three cells at 6 steps with two worker processes. It checks that a second call starts nothing and that a removed result is the only one that is run again. A last test checks that a failing run is reported and that the others finish.
+
+**Step 6 (the analysis).**
+
+23. **Test 1.** It follows section 8.1. The statistic is computed directly with numpy. The function of statsmodels is used only in a unit test, as a cross-check.
+24. **Test 2.** Each row gives the mean paired gap, an uncorrected 95 percent t-interval, the raw p-value and the Holm-adjusted p-value. The Holm family is the seven arms at one head size. The gaps of the single seeds are columns of the same row. Two further kinds of row are labelled as uncorrected: the untied minus the tied dot product at each head size, and the unmasked minus the masked untied dot product at D = 16. The second one measures the departure caused by the mask.
+25. **Test 3. Flag for the user.** The slope of the gap is taken on log2 D, so it is in bpc per doubling of D. There is one slope per seed and arm. The t-test uses the five slopes. No correction for multiple testing is applied across the eight rows, the seven arms and their mean. The design does not specify one. The mean over the seven arms is the primary row.
+26. **Test 4.** The linear contrast is the slope of the least-squares line of the bpc on $1/p$. The quadratic contrast is the coefficient of $(1/p)^2$ in the least-squares quadratic. Both are computed for each seed and head size. Each contrast is tested against 0 over the seeds at each head size. Its slope on log2 D is then tested in the same way as in test 3.
+27. **Test 5.** The bootstrap over seeds is exact. It runs over all 126 distinct resamples, each with its multinomial probability, so it needs no random numbers. The rank stability is the Spearman correlation between the rankings of the seven exponents at two head sizes, averaged over the ten pairs of head sizes. It is reported with a weighted mean and a 95 percent interval over the resamples. The matrix of correlations of the full data is also written.
+28. **Diverged runs.** A diverged main run has no outcome and is a missing value. It is listed in `diverged_runs.csv`. In test 2 its pair is dropped. In test 3 a slope needs at least three head sizes, and the mean over the seven arms needs all seven arms. A contrast in test 4 needs all seven exponents. Test 1 removes the exponent as section 8.1 says.
+29. **Outputs.** The tables are CSV files in `results/analysis/tables/`, and the figures are PNG files in `results/analysis/figures/`. The figures show the mean bpc by head size, the paired gap by head size with the single seeds, the shape of the effect of p at each head size, and the probability that each p is best. The exponents and the head sizes use one-hue ordered ramps, and the arms off the axis use fixed single colours. The stage stops with an error if any of the 235 main runs is missing.
+30. **Smoke test of the analysis.** The two smoke cells are not a full grid. The smoke command therefore writes invented results for all 47 cells into `results/smoke/invented/` and runs the analysis on them. The invented results have a known interaction and a known trend. The unit tests use them too.

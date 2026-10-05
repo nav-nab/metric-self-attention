@@ -60,8 +60,9 @@ def stage_main(args):
 
 
 def stage_analyze(args):
-    print("stage 'analyze' is not written yet", file=sys.stderr)
-    return 2
+    from msa.analyze import run_analysis
+    run_analysis(args.results)
+    return 0
 
 
 def stage_all(args):
