@@ -1,6 +1,6 @@
 # Metric self-attention: summary of the original proposal
 
-**Status: RECORD.** Recorded 2026-10-05. This is the broader proposal as it stood after the pilot, before the project was refocused on head size and the choice of p (see `docs/project_specification.md`). It is kept as a record of what the planned project was. The authoritative design decisions are the lines tagged [stated] in the project memory guide.
+**Status: RECORD.** Recorded 2026-10-05. This is the broader proposal as it stood after the pilot, before the project was refocused on head size and the choice of p (see `docs/project_specification.md` at the top of the repository). It is kept as a record of what the planned project was. The authoritative design decisions are the lines tagged [stated] in the project memory guide.
 
 This summary is for someone who has not seen the project. It separates what is decided from what the pilot found and from what is in question. Every term is defined where it first appears.
 

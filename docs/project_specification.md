@@ -1,6 +1,6 @@
 # Metric self-attention: head size and the choice of p
 
-**Status: DRAFT for revision.** Recorded 2026-10-05. This is the proposal rewritten to centre on the interaction between head size and the choice of p. It is to be edited before any full run is launched. Nothing here is a final decision. The earlier, broader proposal is kept in `docs/project_specification_v1_original_design.md`.
+**Status: DRAFT for revision.** Recorded 2026-10-05. This is the proposal rewritten to centre on the interaction between head size and the choice of p. It is to be edited before any full run is launched. Nothing here is a final decision. The earlier, broader proposal is kept in `shelved/pilot_v1/docs/project_specification_v1_original_design.md`.
 
 This document is for a reader who has not seen the project. It keeps the pilot results that bear on the central question and leaves out the rest.
 

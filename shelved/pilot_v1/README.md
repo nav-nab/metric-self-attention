@@ -20,6 +20,7 @@ this would be harder than starting again, and that the pilot's numbers describe 
 | `DESIGN.md` | The design record of version 1: what was decided, by whom, and what has since changed. |
 | `PILOT_FINDINGS.md` | The pilot findings that concern the language model and the shared machinery, and which of them still matter. |
 | `docs/pilot_report.md` | The full pilot report as it was delivered on 2026-10-02, with its glossary. |
+| `docs/project_specification_v1_original_design.md` | The earlier, broader proposal (two tasks, one head size), as it stood after the pilot. |
 | `docs/implementation_notes.md` | Exactly what the code does (score, calibration, models, training protocol, task plug-ins). |
 | `msa/` | The code: distance kernel, gradient checks, models, calibration, task-agnostic training engine, benchmarks, pilot stages. |
 | `mqar/` | The shelved recall task, with its own README, design record, findings, entry script and tests. |
