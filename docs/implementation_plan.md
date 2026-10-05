@@ -83,6 +83,36 @@ The estimates came from sandbox runs. About four workers run at once, and each w
 
 The analysis reads only the result files. It needs a library for the mixed model of test 1. **Approved**: add `statsmodels` to `requirements.txt`, at a version that works with torch 2.2.2, numpy below 2 and Python 3.10 to 3.12. The exact form of the F-test for the D x p interaction is written out in a short section of this document before the analysis code is written, and the user approves it. The two usual forms are a mixed model with a random seed intercept and a repeated-measures analysis of variance. Test 6 is not coded, because it is run only if an equivalence claim is made.
 
+### 8.1 The F-test of test 1
+
+**Status.** This is the proposed exact form. It needs the approval of the user before the analysis code is written. The user has chosen the repeated-measures analysis of variance.
+
+**Data.** The test uses the final validation bpc of the seven L^p arms. There are five head sizes and five final seeds, so the data are 5 x 5 x 7 = 175 values. Write $y_{s,D,p}$ for the value of seed $s$, head size $D$ and exponent $p$. The two dot arms, the uniform control and the unmasked arm are not part of this test.
+
+**Model.** The seed is a random block, and $D$ and $p$ are fixed categorical factors. Each cell has one value per seed, so the seed x $D$ x $p$ term is the error:
+
+$$y_{s,D,p} = \mu + a_s + \alpha_D + \gamma_p + (\alpha\gamma)_{D,p} + (a\alpha)_{s,D} + (a\gamma)_{s,p} + e_{s,D,p}.$$
+
+**The statistic.** Let $S = 5$, $N_D = 5$ and $N_p = 7$. A bar with a dot denotes an average over that index. The sum of squares of the interaction is
+
+$$SS_{D\times p} = S \sum_{D,p} \big(\bar y_{\cdot Dp} - \bar y_{\cdot D\cdot} - \bar y_{\cdot\cdot p} + \bar y_{\cdot\cdot\cdot}\big)^2 .$$
+
+The sum of squares of the error is
+
+$$SS_{\text{err}} = \sum_{s,D,p} \big(y_{sDp} - \bar y_{sD\cdot} - \bar y_{s\cdot p} - \bar y_{\cdot Dp} + \bar y_{s\cdot\cdot} + \bar y_{\cdot D\cdot} + \bar y_{\cdot\cdot p} - \bar y_{\cdot\cdot\cdot}\big)^2 .$$
+
+The test statistic is
+
+$$F = \frac{SS_{D\times p} / \big((N_D-1)(N_p-1)\big)}{SS_{\text{err}} / \big((S-1)(N_D-1)(N_p-1)\big)} .$$
+
+Under the null hypothesis of no interaction, $F$ follows an F distribution with $(N_D-1)(N_p-1) = 24$ and $(S-1)(N_D-1)(N_p-1) = 96$ degrees of freedom. The p-value is the upper tail of that distribution. The write-up reports $F$, the two degrees of freedom and the p-value.
+
+**Assumptions.** The residuals are assumed to be approximately normal. The test also assumes sphericity, which means equal variances for the differences between the interaction contrasts. Five seeds are too few to check this. The write-up states the assumption. No correction for it is applied. If the user asks for the Greenhouse-Geisser correction, it replaces the p-value and is not reported beside it.
+
+**Missing values.** The test needs a full 5 x 5 x 7 array. If any main run of an L^p arm diverged, the whole exponent $p$ of that run is removed from the test, for all head sizes and all seeds. The degrees of freedom then use the number of remaining exponents $N_p'$. They become $4(N_p'-1)$ and $16(N_p'-1)$. The write-up reports the removed arm and its divergence as a finding. The test is not computed if fewer than two exponents remain.
+
+**Implementation and check.** The statistic is computed directly from the sums of squares with numpy, and the p-value comes from `scipy.stats.f`. A unit test compares the result with `statsmodels.stats.anova.AnovaRM` on the same balanced data. A second test uses invented data with a known interaction. A third test checks the rule for a removed exponent.
+
 ## 9. Tests
 
 The unit tests check the following.
