@@ -1,6 +1,6 @@
 # Metric self-attention: implementation plan
 
-This is the third document. It follows `project_outline.md` and `design_details.md`, which fix what is run. This document fixes how the code is organised. It is the brief for the agent that writes the code. No code exists yet, and no experiment is run until the user agrees.
+This is the third document. It follows `project_outline.md` and `design_details.md`, which fix what is run. This document fixes how the code is organised. It is the brief for the agent that writes the code. The code is being written, and no experiment is run until the user agrees.
 
 Items marked **Requirement** were requested by the user. Items marked **Approved** were proposed by Claude and approved by the user on 2026-10-05. Section 11 lists details that the documents leave to the implementing agent, together with the rules for working on this project.
 
@@ -89,7 +89,7 @@ The unit tests check the following.
 - The L^p kernel agrees with a plain float64 version in value and gradient, for every p including infinity.
 - The gradient at an exact match is finite for every p, because of the epsilon.
 - The mask is correct, including the exception at position 0.
-- After calibration, the scaled scores of each arm have a standard deviation of 1 on the calibration batches, and the tied dot constant is near $1/\sqrt{D}$.
+- After calibration, the scaled scores of each arm have a standard deviation of 1 on the calibration batches. The tied dot constant satisfies $c\,\sigma_z^2\sqrt{D} \approx 1$, where $\sigma_z^2$ is the measured variance of the coordinates of $z$ (section 13, item 1).
 - Arms run with the same seed start from the same shared parameters.
 - The data split and the batches are the same for the same seed.
 - A short run resumes correctly after an interruption (section 4).
@@ -130,9 +130,23 @@ The unit tests check the following.
 ## 12. Items that still need the user
 
 - Agreement to the smoke run in step 5 of section 10 before it is run.
-- Approval of the F-test form of test 1 (section 8) before the analysis code is written.
+- Approval of the written form of the test-1 F-test (section 8) before the analysis code is written. The user has chosen the repeated-measures analysis of variance.
 - Review of any choice in section 13 that the agent flags.
 
-## 13. Coding decisions (to be filled in by the implementing agent)
+## 13. Coding decisions (filled in by the implementing agent)
 
-None yet.
+Each item records a choice that the documents leave open, or a detail of the code that the reader may need. Items marked **User** were decided by the user. The other items follow the defaults of section 11, or are small details of the code.
+
+**Steps 1 and 2 (data, model, scores, calibration).**
+
+1. **Sanity check of the tied dot constant. User.** With the initial standard deviation of 0.02 from section 11, the coordinates of $z$ have a standard deviation of about 0.16, not 1. The constant then lands near $40/\sqrt{D}$ and not near $1/\sqrt{D}$. The check of design section 6 is therefore restated as $c\,\sigma_z^2\sqrt{D} \approx 1$, with $\sigma_z^2$ measured on the calibration batches. The initial standard deviation stays at 0.02. The measured product lies between 0.84 (D = 16) and 1.02 (D = 2) for the tied dot arm. The test accepts 0.75 to 1.25.
+2. **Pooling of the spread.** The variances of the raw scores of single queries are averaged over the pooled queries. The constant is the inverse of the square root of that mean variance. This is the root mean square of the per-query standard deviations.
+3. **The typical sum $S_{\text{typ}}$.** It is the median, over the same pooled pairs of query and key, of $\sum_m |x_m - y_m|^p$. The median is used because the sums are skewed at large p. It is measured with the epsilon set to 0, so that it equals the p-th power of the distance exactly.
+4. **Calibration batches.** There are 32 batches of 64 sequences, drawn with seed 999. The constants measured on the even and the odd batches agree to within 1 percent in the tests.
+5. **Calibration files.** Each cell has its own file, `results/calibration/<arm>_D<D>.json`. A finished file is skipped on a restart. The stage also writes `calibration_summary.csv`. The constants are stored as `c` and `eps`. The epsilon is 0 for p = 1, for p = infinity and for the dot arms.
+6. **Arm names.** `dot_tied`, `dot_untied`, `dot_untied_unmasked`, `uniform`, and `lp_1`, `lp_1.5`, `lp_2`, `lp_3`, `lp_4`, `lp_8`, `lp_inf`.
+7. **Batches.** A training batch is a pure function of the seed and the step. A resumed run then sees the same batches as an uninterrupted run, and the checkpoint needs no position in the data stream beyond the step.
+8. **Layers.** The output projection and the two MLP layers have biases. LayerNorm has a gain and a bias. The query, key and value projections have none, as section 11 says. The tied matrix is stored as `w_q` in every arm, so that the untied arm starts with the same `w_q` as the tied arms.
+9. **The kernel.** It processes 16 query rows per chunk. In the causal mode it computes only the keys up to the end of the chunk, which halves the work. Entries above the diagonal are then not meaningful, and the model masks them. Squares, cubes and the exponents 4, 7 and 8 use multiplications, and the other exponents use `pow`. The backward pass sets the gradient to zero where the upstream gradient is zero. Masked entries then cannot produce 0 times infinity, even if the epsilon is 0.
+10. **Extra module.** `msa/util.py` holds the atomic file writes. It is not in the layout of section 2.
+11. **Environment.** The unit tests were run in a virtual environment on Linux with Python 3.10, torch 2.2.2 and numpy 1.26. The line `statsmodels>=0.14,<0.15` was added to `requirements.txt`. Version 0.14.6 imports with this torch and numpy. The environment lies outside the repo folder.

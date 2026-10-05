@@ -20,7 +20,7 @@ Equations are written in LaTeX. Figures are drawn by `docs/figures/make_figures.
 
 ## 1. Status
 
-The design is settled. No code and no run exists yet. The code is written against `implementation_plan.md`. One detail is deferred: the equivalence margin of test 6 in section 9. It is needed only if the write-up claims that two arms are equivalent. All other points were confirmed by the user, and section 12 lists them.
+The design is settled. The code is being written, and no run exists yet. The code is written against `implementation_plan.md`. One detail is deferred: the equivalence margin of test 6 in section 9. It is needed only if the write-up claims that two arms are equivalent. All other points were confirmed by the user, and section 12 lists them.
 
 Nothing is run until the user agrees. Smoke tests of a few steps are the only exception, and they are part of writing the code.
 

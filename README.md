@@ -5,7 +5,7 @@ The project studies how the head size D (the query-key dimension per head) inter
 small character-level language model on Tiny Shakespeare, run over head sizes D = 2, 4, 8, 12 and 16 with nine arms: the tied dot
 product, seven L^p distances (p = 1, 1.5, 2, 3, 4, 8, infinity) and the untied dot product. A uniform-attention control is a full arm too, and an unmasked untied dot product is run at D = 16 as a standard-transformer reference. The context is 64 characters, and each run takes 4,000 steps. Each arm is given its own learning rate at each head size, chosen by a one-seed scan. Five seeds per cell, run on the laptop, with the final weights committed. The primary analyses are the D x p interaction and the trend of the gap to the tied dot product across D.
 
-**Status (2026-10-05): design settled, implementation starting.** The project is being rebuilt from scratch, and no code or run exists yet. All design issues are
+**Status (2026-10-05): design settled, implementation starting.** The project is being rebuilt from scratch. The code is being written and no run exists yet. All design issues are
 settled, and one detail is deferred. Section 12 of `docs/design_details.md` lists the decisions.
 The first version of the code and its pilot are kept in `shelved/` as a record and are not part of the live project.
 
