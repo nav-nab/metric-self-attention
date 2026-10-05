@@ -20,7 +20,7 @@ Equations are written in LaTeX. Figures are drawn by `docs/figures/make_figures.
 
 ## 1. Status
 
-The design is settled. No code and no run exists yet. One detail is deferred: the equivalence margin of test 6 in section 9. It is needed only if the write-up claims that two arms are equivalent. All other points were confirmed by the user, and section 12 lists them.
+The design is settled. No code and no run exists yet. The code is written against `implementation_plan.md`. One detail is deferred: the equivalence margin of test 6 in section 9. It is needed only if the write-up claims that two arms are equivalent. All other points were confirmed by the user, and section 12 lists them.
 
 Nothing is run until the user agrees. Smoke tests of a few steps are the only exception, and they are part of writing the code.
 
@@ -52,7 +52,7 @@ The analysis looks at the whole surface of validation bpc over D and p. Section 
 
 **Training length.** Each run takes 4,000 optimiser steps.
 
-**What is left to coding time.** The optimiser, the learning-rate schedule, the batch size and the evaluation schedule are not yet fixed. They will be chosen when the code is written, recorded in this document, and held fixed across all arms. The learning-rate scan tunes only the peak rate.
+**What is left to coding time.** The optimiser, the schedule, the batch size, the gradient clipping and the evaluation were fixed with the implementation plan, in section 6 of `implementation_plan.md`. The values are the same for every arm, and the learning-rate scan tunes only the peak rate.
 
 **What is logged.** Each run logs the learned scale of each head, the largest logit, the attention entropy, and the norms of the queries and keys.
 
@@ -124,7 +124,7 @@ $$c = \frac{1}{\hat\sigma}, \qquad \hat\sigma = \text{standard deviation of } r_
 - It excludes the masked diagonal. It also excludes the early positions that have fewer than about 8 allowed keys, because a standard deviation over a handful of keys is unreliable. The right-hand panel of the mask figure in section 5 shows which positions remain.
 - It proceeds layer by layer, so that each layer is measured on inputs produced by the layers below it.
 - The unmasked untied dot product is the one arm whose allowed keys include the position itself. It is calibrated over all of its allowed keys, with the same rule on fewer than about 8 keys.
-- How the standard deviations of single queries are pooled over positions, heads and batches is fixed when the code is written, and it is recorded then.
+- How the standard deviations of single queries are pooled over positions, heads and batches is fixed in section 5 of `implementation_plan.md`.
 
 **On top of the constant.** The learned scale $\beta_h$ starts at 1 for every arm. It lets the model sharpen or flatten its attention during training. Matching at initialisation is the whole scheme. The arms are not matched later in training, and the scale is not tuned per arm.
 

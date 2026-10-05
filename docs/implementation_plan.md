@@ -1,8 +1,8 @@
 # Metric self-attention: implementation plan
 
-This is the third document. It follows `project_outline.md` and `design_details.md`, which fix what is run. This document fixes how the code will be organised. It is a plan for the user to review. No code exists yet, and nothing is run until the user agrees.
+This is the third document. It follows `project_outline.md` and `design_details.md`, which fix what is run. This document fixes how the code is organised. It is the brief for the agent that writes the code. No code exists yet, and no experiment is run until the user agrees.
 
-Items marked **Proposal** are my suggestions and need the user's approval. Items marked **Requirement** were requested by the user.
+Items marked **Requirement** were requested by the user. Items marked **Approved** were proposed by Claude and approved by the user on 2026-10-05. Section 11 lists details that the documents leave to the implementing agent, together with the rules for working on this project.
 
 ## 1. Scope
 
@@ -59,15 +59,15 @@ The full run takes about a day, so interruptions are expected. **Requirement**: 
 
 **Calibration.** The calibration stage fixes the points left open in section 6 of the details. The standard deviation is measured per query over its allowed keys. It is then pooled over the positions with at least about 8 allowed keys, over the four heads of the layer, and over the fixed calibration batches. The constants are saved to a file, and every later run reads that file.
 
-**Divergence.** The script must decide without a person whether a run diverged. **Proposal**: a run diverged if its training loss becomes non-finite at any step, or if its final validation bpc is above $\log_2 65 \approx 6.02$, which is the value of a model that guesses uniformly over the characters. A diverged scan run is recorded, reported and excluded from the choice of rate. A diverged main run is recorded as such and is not rerun.
+**Divergence.** The script must decide without a person whether a run diverged. **Approved**: a run diverged if its training loss becomes non-finite at any step, or if its final validation bpc is above $\log_2 65 \approx 6.02$, which is the value of a model that guesses uniformly over the characters. A diverged scan run is recorded, reported and excluded from the choice of rate. A diverged main run is recorded as such and is not rerun.
 
 ## 6. Training choices left to coding time
 
-The details document leaves four choices open. **Proposal**:
+The details document left these choices to coding time. **Approved**:
 
-| Choice | Proposed value |
+| Choice | Value |
 |---|---|
-| Optimiser | AdamW, with betas 0.9 and 0.95, and a small weight decay on the matrices only |
+| Optimiser | AdamW, with betas 0.9 and 0.95, and a small weight decay (0.01) on the weight matrices only |
 | Schedule | Linear warm-up over the first 200 steps, then cosine decay to 10 percent of the peak rate. The scan tunes the peak rate. |
 | Batch | 64 sequences of 64 characters per step |
 | Gradient clipping | Global norm 1.0, for every arm |
@@ -77,11 +77,11 @@ These values are standard defaults. They are the same for every arm, and only th
 
 ## 7. Speed and parallelism
 
-The estimates came from sandbox runs. About four workers run at once, and each worker uses one thread. **Proposal**: the sweep puts the slowest cells first, so that the last runs of a stage are short. The script prints a progress line with the number of finished runs and an estimate of the time remaining. The user should keep the laptop awake during the run, for example with `caffeinate -i` on macOS.
+The estimates came from sandbox runs. About four workers run at once, and each worker uses one thread. **Approved**: the sweep puts the slowest cells first, so that the last runs of a stage are short. The script prints a progress line with the number of finished runs and an estimate of the time remaining. The user should keep the laptop awake during the run, for example with `caffeinate -i` on macOS.
 
 ## 8. Analysis
 
-The analysis reads only the result files. It needs a library for the mixed model of test 1. **Proposal**: add `statsmodels` to `requirements.txt`, at a version that works with torch 2.2.2, numpy below 2 and Python 3.10 to 3.12. The exact form of the F-test for the D x p interaction is written out in this document before the analysis code is written. Test 6 is not coded, because it is run only if an equivalence claim is made.
+The analysis reads only the result files. It needs a library for the mixed model of test 1. **Approved**: add `statsmodels` to `requirements.txt`, at a version that works with torch 2.2.2, numpy below 2 and Python 3.10 to 3.12. The exact form of the F-test for the D x p interaction is written out in a short section of this document before the analysis code is written, and the user approves it. The two usual forms are a mixed model with a random seed intercept and a repeated-measures analysis of variance. Test 6 is not coded, because it is run only if an equivalence claim is made.
 
 ## 9. Tests
 
@@ -104,7 +104,35 @@ The unit tests check the following.
 6. The analysis code, tested on invented results and not on real runs.
 7. The long run, started by the user.
 
-## 11. For the user to decide
+## 11. Further details and working rules for the implementing agent
 
-- Approve or change the proposals in sections 5, 6, 7 and 8.
-- Agree to the smoke run in step 5 of section 10 before it is run.
+**Details the documents do not fix.** Section 11 gives defaults. The agent may choose another standard value. It then records the choice in section 13 and tells the user, and it flags any choice that could affect the conclusions.
+
+- **Data.** The vocabulary is the sorted set of characters of the whole corpus. The training text is the first 90 percent of the characters, and the validation text is the last 10 percent. A training batch is made of random windows of 65 characters, drawn from the training text by a generator that depends on the seed. The inputs are the first 64 characters and the targets are the last 64. The validation windows do not overlap, and a final partial window is dropped.
+- **Seeds.** The five final seeds are 1 to 5. The scan seed is 100. The calibration seed is 999. The data stream and the initial values use separate generators for each seed.
+- **Shared initial values.** Each parameter is initialised from a generator seeded by the seed and the parameter name. Arms with the same seed then share the initial values of every parameter they have in common. In the untied arm, the initial $W_Q$ equals the initial $W$ of the tied arms, and $W_K$ comes from its own generator.
+- **Initialisation.** Matrices and embeddings are drawn from a normal distribution with standard deviation 0.02. Norm gains start at 1. The output projections of the two residual branches are scaled by $1/\sqrt{2L}$, with $L = 2$ layers.
+- **Layers.** Pre-normalisation with LayerNorm, a final LayerNorm before the tied output projection, GELU in the MLP, and no dropout. The query, key and value projections have no bias, because a shared bias cancels in a distance.
+- **The scale $\beta_h$.** It is stored as $\log\beta_h$ with initial value 0, so that the scale stays positive. It has no weight decay.
+- **Weight decay.** It applies to the weight matrices of the linear layers only. It does not apply to embeddings, norm gains, biases or $\log\beta_h$.
+- **Calibration batches.** A fixed set of batches drawn with the calibration seed. The number is chosen so that the constants are stable to about 1 percent.
+- **The uniform control.** It has no query or key projections. All other parts of the model are the same.
+- **Numbers.** Everything is float32. Each worker uses one thread and the multiprocessing method `spawn`.
+- **Result files.** Each run writes `result.json` with the arm, D, seed or scan flag, rate, number of steps, final validation bpc, final training loss, the diverged flag and the wall-clock time. The file format is otherwise the agent's choice.
+
+**Working rules.**
+- The design in `project_outline.md` and `design_details.md` is settled. The agent does not change it. If something looks wrong or ambiguous, the agent asks the user.
+- The agent ignores the `shelved/` folder, and it does not use the version-1 code kept in the project memory.
+- Unit tests may be run freely. A smoke run on the user's laptop, the learning-rate scan and the main experiment are run only when the user agrees. The user starts the long run.
+- The agent commits locally and does not push. It keeps the three documents in step with the code, and it writes documents in formal prose with short, self-contained clauses.
+- Complex extras are not added by default. The write-up has to be understood by human readers.
+
+## 12. Items that still need the user
+
+- Agreement to the smoke run in step 5 of section 10 before it is run.
+- Approval of the F-test form of test 1 (section 8) before the analysis code is written.
+- Review of any choice in section 13 that the agent flags.
+
+## 13. Coding decisions (to be filled in by the implementing agent)
+
+None yet.
