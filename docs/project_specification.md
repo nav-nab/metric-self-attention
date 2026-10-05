@@ -49,7 +49,7 @@ Three geometric facts motivate the design. They are reasoning, not results.
 
 **The main task.** A small character-level language model on Tiny Shakespeare, about 1.1 million characters from Shakespeare's plays. The model is a two-layer transformer of width 64, with four heads and a context of 64 characters. The score is **validation bits per character (bpc)**, the average information the model needs per character on held-out text. Lower is better.
 
-**Varying D.** Only the query-key dimension of each head is shrunk. The value width stays at 16 per head, so the rest of the model is unchanged. The grid is D = 2 and D = 4, alongside the existing D = 16, and possibly D = 8 for a trend. D = 1 is skipped, because all L^p arms coincide there.
+**Varying D.** Only the query-key dimension of each head is shrunk. The value width stays at 16 per head, so the rest of the model is unchanged. The grid is D = 2, 4, 8, 12 and 16, where D = 16 is the default head size of the model (width 64 divided by 4 heads). D = 1 is skipped, because all L^p arms coincide there.
 
 **The recall task is shelved.** A synthetic recall task (MQAR) was considered as a controlled setting where head size and context size interact. It is shelved as of 2026-10-05. Its code, design decisions and pilot findings are in `shelved/mqar/`. The language model is run by itself first, and the full results decide whether the recall task is needed.
 
@@ -78,7 +78,6 @@ Three geometric facts motivate the design. They are reasoning, not results.
 
 ## 7. Choices that remain open
 
-- The D grid: {2, 4}, or add 8 for a trend.
 - The learning-rate protocol per D.
 - The language-model learning rate and the number of seeds.
 - Whether the uniform control is a full arm or a single reference run.
@@ -90,3 +89,5 @@ Three geometric facts motivate the design. They are reasoning, not results.
 **Calibration of the score scale (decided; closed 2026-10-05).** Different score functions give different spreads of scores across the keys. The softmax is sensitive to that spread, so an uncorrected comparison would partly measure how sharp each arm's attention happens to be at the start. Each arm therefore multiplies its score by a fixed constant, chosen so that the standard deviation of the scores across a query's allowed keys equals a common target of 1 at initialisation. The constant is measured once for each combination of head size, arm and layer, so it is recomputed for every head size in the experiment. The measurement uses a model built with a fixed calibration seed on fixed batches of text, and all seeds share the result. It excludes the masked diagonal and the early positions with fewer than about 8 allowed keys, and it proceeds layer by layer. A learned scale per head, starting at 1 for every arm, sits on top of the constant, so the model can sharpen or flatten its attention during training. Matching at initialisation is the whole scheme. We do not match the arms later in training, and we do not tune the scale per arm. The target of 1 is a convention that gives soft but not flat attention at the start, and no other target has been tested. A single standard deviation is a crude summary of the score distribution, because distance scores are more skewed than dot-product scores, and this is accepted. The calibrated constant for the tied dot product should land near one over the square root of the head dimension, which serves as a sanity check. The write-up must state that the scale was not tuned per arm and that the target was chosen by convention.
 
 **Shelving of the recall task (decided 2026-10-05).** The user shelved the recall task (MQAR) because the distance arms sit at its accuracy ceiling and the dot-product result depends on the learning rate, and because further pilots on it would not end. The code, the design decisions and the pilot findings were moved into `shelved/mqar/`, with its own entry point and tests, and the main engine was made task-agnostic so that the task plugs in. The language model is run by itself first. The full results then decide whether the recall task is needed.
+
+**Head-size grid (decided 2026-10-05).** The grid of head sizes is D = 2, 4, 8, 12 and 16. The user added D = 8 and D = 12 to the earlier first round of D = 2 and 4 beside the default D = 16.

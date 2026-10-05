@@ -23,7 +23,7 @@ from .arms import ARMS, NULL_ARM
 
 ROOT = Path(__file__).resolve().parent.parent
 PILOT = ROOT / "results" / "pilot"
-LM_DS = (16, 4, 2)         # head sizes (query-key dimension per head) used by the calibration and timing stages
+LM_DS = (16, 12, 8, 4, 2)  # head sizes (query-key dimension per head) used by the calibration and timing stages
 def _save(name, obj, out=None):
     out = Path(out or PILOT)
     out.mkdir(parents=True, exist_ok=True)
@@ -454,7 +454,7 @@ def stage_lm_small_d_lr(out=None, quick=False, workers=1, threads=1, Ds=None, lr
     (a rate scan, and 5 paired seeds at the current LM rate for the dynamic range at D = 16)."""
     hdr("LM small query-key dimension: learning-rate scan and null arm")
     root = Path(out or PILOT) / "lm_small_d_lr"
-    Ds = Ds or [2, 4]
+    Ds = Ds or [2, 4, 8, 12, 16]
     kw = dict(threads=threads, diag_every=500, eval_every=250)
     if quick:
         kw.update(steps=30, eval_every=30, diag_every=30, eval_windows_mid=32)
@@ -487,7 +487,7 @@ def stage_lm_small_d(out=None, quick=False, workers=1, threads=1, Ds=None, n_see
     lr = _lm_lr()
     hdr(f"LM small query-key dimension: main round (lr {lr:g})")
     root = Path(out or PILOT) / "lm_small_d"
-    Ds = Ds or [2, 4]
+    Ds = Ds or [2, 4, 8, 12, 16]
     arms = arms or list(ARMS)
     seeds = list(range(100, 100 + n_seeds))
     kw = dict(threads=threads, diag_every=500, eval_every=250, lr=lr, tag=f"lr{lr:g}")
