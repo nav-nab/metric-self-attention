@@ -159,8 +159,8 @@ The unit tests check the following.
 
 ## 12. Items that still need the user
 
-- The result of the smoke run of step 5, which the user runs on the laptop.
-- Review of any choice in section 13 that the agent flags. Item 25 (no multiplicity correction in test 3) is flagged.
+- The start of the long run, which the user makes with `python execute_project.py all`. The smoke run of step 5 passed on the laptop.
+- Review of any choice in section 13 that the agent flags.
 
 ## 13. Coding decisions (filled in by the implementing agent)
 
@@ -201,7 +201,7 @@ Each item records a choice that the documents leave open, or a detail of the cod
 
 23. **Test 1.** It follows section 8.1. The statistic is computed directly with numpy. The function of statsmodels is used only in a unit test, as a cross-check.
 24. **Test 2.** Each row gives the mean paired gap, an uncorrected 95 percent t-interval, the raw p-value and the Holm-adjusted p-value. The Holm family is the seven arms at one head size. The gaps of the single seeds are columns of the same row. Two further kinds of row are labelled as uncorrected: the untied minus the tied dot product at each head size, and the unmasked minus the masked untied dot product at D = 16. The second one measures the departure caused by the mask.
-25. **Test 3. Flag for the user.** The slope of the gap is taken on log2 D, so it is in bpc per doubling of D. There is one slope per seed and arm. The t-test uses the five slopes. No correction for multiple testing is applied across the eight rows, the seven arms and their mean. The design does not specify one. The mean over the seven arms is the primary row.
+25. **Test 3. User.** The slope of the gap is taken on log2 D, so it is in bpc per doubling of D. There is one slope per seed and arm. The t-test uses the five slopes. The user decided that no correction for multiple testing is applied across the eight rows, the seven arms and their mean. The mean over the seven arms is the primary row.
 26. **Test 4.** The linear contrast is the slope of the least-squares line of the bpc on $1/p$. The quadratic contrast is the coefficient of $(1/p)^2$ in the least-squares quadratic. Both are computed for each seed and head size. Each contrast is tested against 0 over the seeds at each head size. Its slope on log2 D is then tested in the same way as in test 3.
 27. **Test 5.** The bootstrap over seeds is exact. It runs over all 126 distinct resamples, each with its multinomial probability, so it needs no random numbers. The rank stability is the Spearman correlation between the rankings of the seven exponents at two head sizes, averaged over the ten pairs of head sizes. It is reported with a weighted mean and a 95 percent interval over the resamples. The matrix of correlations of the full data is also written.
 28. **Diverged runs.** A diverged main run has no outcome and is a missing value. It is listed in `diverged_runs.csv`. In test 2 its pair is dropped. In test 3 a slope needs at least three head sizes, and the mean over the seven arms needs all seven arms. A contrast in test 4 needs all seven exponents. Test 1 removes the exponent as section 8.1 says.
