@@ -21,7 +21,7 @@ msa/
   sweep.py                the scan, the rate selection and the main grid
   analyze.py              the statistical tests, tables and figures
 tests/                    unit tests and the interruption test
-results/<stage>/<run>/    result.json, log.csv, final.pt, ckpt.pt
+results/<stage>/<run>/    result.json, log.csv, diagnostics.json, final.pt, ckpt.pt
 docs/figures/             schematic figures (already present)
 ```
 
@@ -150,3 +150,11 @@ Each item records a choice that the documents leave open, or a detail of the cod
 9. **The kernel.** It processes 16 query rows per chunk. In the causal mode it computes only the keys up to the end of the chunk, which halves the work. Entries above the diagonal are then not meaningful, and the model masks them. Squares, cubes and the exponents 4, 7 and 8 use multiplications, and the other exponents use `pow`. The backward pass sets the gradient to zero where the upstream gradient is zero. Masked entries then cannot produce 0 times infinity, even if the epsilon is 0.
 10. **Extra module.** `msa/util.py` holds the atomic file writes. It is not in the layout of section 2.
 11. **Environment.** The unit tests were run in a virtual environment on Linux with Python 3.10, torch 2.2.2 and numpy 1.26. The line `statsmodels>=0.14,<0.15` was added to `requirements.txt`. Version 0.14.6 imports with this torch and numpy. The environment lies outside the repo folder.
+
+**Step 3 (one run and its checkpointing).**
+
+12. **Files of a run.** `result.json` is written last, and it marks the run as finished. `log.csv` holds the training loss and the rate every 50 steps and the validation bpc every 500 steps. `diagnostics.json` holds the per-head diagnostics of section 3 of the details at every evaluation. A run with a non-finite loss stops at once and is recorded as diverged. It has no `final.pt`, because its weights are not finite. Its `result.json` has the validation bpc `null`.
+13. **Diagnostics.** They are measured on the first 64 validation windows. The entropy is the mean over the queries with at least 8 allowed keys. The largest logit is the largest scaled score of the head. The norms are means over all positions. The uniform arm has no diagnostics.
+14. **Checkpoint.** It holds the model, the optimiser, the next step, the loss history, the log rows, the diagnostics, the elapsed time and the torch random-number state. The training uses no random numbers beyond the seeded batches, so the state is kept only as the plan requires. A checkpoint of a different run (different arm, head size, seed, rate or length) is refused. A run that ends or fails before its first checkpoint restarts at step 0, as section 4 says.
+15. **Numbers.** The final training loss is the mean over the last 100 steps. The rate rises linearly over the first 200 steps and reaches 10 percent of the peak exactly at the last step. The weight decay of 0.01 applies to the weight matrices of the linear layers (five per layer, six in the untied arms). The result of the uniform arm records the head size as `null`.
+16. **Interruption tests.** One test stops a run with an exception after step 13 with a fake clock, so that the last checkpoint is at step 10. It resumes the run and compares the weights, the log and the final bpc with an uninterrupted run, for three arms. A second test kills a real process with SIGKILL while it writes a checkpoint at every step. It then resumes the run and compares the final bpc with an uninterrupted run. Both agree to better than 1e-6.
