@@ -1,7 +1,7 @@
 """Pilot stages for the language model. Each stage writes results/pilot/<stage>.json (and figures) and returns its result dict.
 Called from execute_project.py; every stage can also be re-run on its own.
 
-The recall (MQAR) stages of the original pilot live in shelved/mqar/ (see the README there). The generic helpers at the
+The recall (MQAR) stages of the original pilot live in mqar/ (see the README there). The generic helpers at the
 top of this file (_save, _load, hdr, _rows, _summarise_trial, mde_in_sd_units, paired_summary) are shared with the shelf."""
 import json
 import math
@@ -227,7 +227,7 @@ def _dup_activations(T=64, H=4, D=16, B_=8, seed=0):
 def stage_epsilon(out=None, quick=False, **_):
     """Gradient safety of the relative epsilon r: no NaN/inf, float32 accuracy against float64, and the distortion of the
     metric. Exact duplicates of q are injected as keys, which gives sums of zero. (Training sensitivity to r was measured on the
-    recall task and is part of the shelf: shelved/mqar, stage epsilon_runs.)"""
+    recall task and is part of the shelf: mqar, stage epsilon_runs.)"""
     hdr("epsilon: gradient safety of r")
     res = {"r_grid": [0.0, 1e-12, 1e-9, 1e-6, 1e-4, 1e-2], "fp32_vs_fp64": [], "distortion": [], "Ds": list(LM_DS[:1] if quick else LM_DS)}
     for D in res["Ds"]:

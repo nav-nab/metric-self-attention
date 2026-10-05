@@ -3,8 +3,8 @@ __pycache__/
 *.pyc
 .pytest_cache/
 # run directories hold final weights, checkpoints and logs; keep summaries (results/**/*.json except per-run) in git
-results/*/*/ckpt.pt
-results/**/*.tmp
+**/results/*/*/ckpt.pt
+**/results/**/final.pt
+**/results/**/*.tmp
 .DS_Store
 _sync/
-results/**/final.pt

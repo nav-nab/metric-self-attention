@@ -6,7 +6,19 @@ import torch
 
 URL = "https://raw.githubusercontent.com/karpathy/char-rnn/master/data/tinyshakespeare/input.txt"
 MD5 = "6fb458f1232090904fb40fe944165e91"
-DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data")
+def _find_data_dir():
+    """The corpus lives in the data/ folder of the repository. This code now sits two levels below it (shelved/pilot_v1/),
+    so look upwards for a data/ folder that holds the corpus; if there is none, use data/ next to this folder (the download target)."""
+    here = os.path.dirname(os.path.abspath(__file__))
+    d = here
+    for _ in range(5):
+        d = os.path.dirname(d)
+        if os.path.exists(os.path.join(d, "data", "tinyshakespeare.txt")):
+            return os.path.join(d, "data")
+    return os.path.join(os.path.dirname(here), "data")
+
+
+DATA_DIR = _find_data_dir()
 
 
 def load_text(path=None):

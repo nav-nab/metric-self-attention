@@ -1,5 +1,7 @@
 # Implementation notes (for the write-up)
 
+> **Shelved (2026-10-05):** these notes describe the code of version 1, now in `shelved/pilot_v1/`. See `README.md` and `DESIGN.md` there.
+
 These notes describe what the code in this repository actually does. Design decisions are in the project guide
 (kept with the research notes). Numbers from the pilot are in `results/pilot/` and summarised in `docs/pilot_report.md`.
 
@@ -46,7 +48,7 @@ These notes describe what the code in this repository actually does. Design deci
 The engine does not know any task. A task subclasses `Task` (defaults, calibration fields, model builder, calibration batches, data setup,
 training loss, evaluation, result header, final metrics) and is registered by name. The language model is the only built-in task.
 A config selects a task by name. A config of an external task also carries `task_module`, so that a worker started with `spawn` imports
-the task first. The shelved recall task is such a plug-in (`shelved/mqar/task.py`). When the engine was split from the old combined
+the task first. The shelved recall task is such a plug-in (`mqar/task.py`). When the engine was split from the old combined
 version, language-model and recall runs were compared against the old engine, and weights, results and run ids were bit-identical.
 
 ## Training protocol (defaults in msa/train.py; the pilot results say which values were adopted)
@@ -59,4 +61,4 @@ version, language-model and recall runs were compared against the old engine, an
   gradient statistics of the projected vectors.
 * Checkpoints every 250 steps; resuming is bit-exact (tested). `final.pt` (weights, config, constants) is saved for every run.
 
-The recall task (model, generator, evaluation, pilot stages) is documented in `shelved/mqar/`.
+The recall task (model, generator, evaluation, pilot stages) is documented in `mqar/`.

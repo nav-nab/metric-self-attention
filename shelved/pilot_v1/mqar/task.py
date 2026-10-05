@@ -1,7 +1,7 @@
 """MQAR as a plug-in task for the training engine (msa.train).
 
 Importing this module registers the task "mqar". Configs made with `make_cfg` below carry
-`task_module = "shelved.mqar.task"`, so worker processes can import it before running.
+`task_module = "mqar.task"`, so worker processes can import it before running.
 """
 import numpy as np
 import torch
@@ -12,7 +12,7 @@ from . import evaluate as mev
 from . import gen
 from .model import build as build_mqar
 
-TASK_MODULE = "shelved.mqar.task"
+TASK_MODULE = "mqar.task"
 MQAR_VAL_SEED, MQAR_TEST_SEED = 777001, 777002
 
 

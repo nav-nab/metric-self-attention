@@ -1,14 +1,14 @@
 #!/usr/bin/env python
 """Entry point for the SHELVED MQAR (multi-query associative recall) task. Nothing here runs unless you call it.
 
-  python shelved/mqar/execute_mqar.py generator        generator checks, baselines, sanity checks
-  python shelved/mqar/execute_mqar.py transition       accuracy vs (P, D) per arm
-  python shelved/mqar/execute_mqar.py transition_ext   probe beyond P = 64 (1024 keys)
-  python shelved/mqar/execute_mqar.py lr_arms          all arms x several learning rates
-  python shelved/mqar/execute_mqar.py lr_safeguard     base rate and 3x, truncated runs
-  python shelved/mqar/execute_mqar.py epsilon_runs     training sensitivity to the relative epsilon r
-  python shelved/mqar/execute_mqar.py seedvar          paired seeds at the pilot cell
-  python shelved/mqar/execute_mqar.py tests            the shelved tests
+  python mqar/execute_mqar.py generator        generator checks, baselines, sanity checks
+  python mqar/execute_mqar.py transition       accuracy vs (P, D) per arm
+  python mqar/execute_mqar.py transition_ext   probe beyond P = 64 (1024 keys)
+  python mqar/execute_mqar.py lr_arms          all arms x several learning rates
+  python mqar/execute_mqar.py lr_safeguard     base rate and 3x, truncated runs
+  python mqar/execute_mqar.py epsilon_runs     training sensitivity to the relative epsilon r
+  python mqar/execute_mqar.py seedvar          paired seeds at the pilot cell
+  python mqar/execute_mqar.py tests            the shelved tests
 Options: --quick, --workers N, --threads N, --out DIR (default results/mqar), --lr, --Ps, --Ds, --arms, --lrs, --seeds.
 """
 import argparse
@@ -16,7 +16,7 @@ import sys
 import time
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))      # repo root, so that `msa` and `shelved` import
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))      # this folder, so that `msa` and `mqar` import
 
 
 def main():
@@ -37,7 +37,7 @@ def main():
         import pytest
         sys.exit(pytest.main(["-q", str(Path(__file__).resolve().parent / "tests")]))
     from msa import train
-    from shelved.mqar import pilot, task            # noqa: F401  (importing task registers "mqar")
+    from mqar import pilot, task            # noqa: F401  (importing task registers "mqar")
     if a.lr:
         task.MQARTask.defaults["lr"] = a.lr
     kw = dict(out=a.out, quick=a.quick, workers=a.workers)

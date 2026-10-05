@@ -1,6 +1,6 @@
 # Pilot report (2026-10-02)
 
-> **Note (2026-10-05):** this report is a snapshot of the pilot as it was reported. The recall task (MQAR) has since been shelved, and its code, design record and findings are in `shelved/mqar/`. The report still refers to the combined entry point of that time (stages such as `transition` and `generator` now live in `shelved/mqar/execute_mqar.py`). The numbers in `results/pilot/` are unchanged.
+> **Note (2026-10-05):** this report is a snapshot of the pilot as it was reported on 2026-10-02. Version 1 of the project, including this report, is now shelved in `shelved/pilot_v1/`, and the project is being restarted from scratch. Paths in this report refer to the layout of that folder. The recall task (MQAR) has its own folder, `mqar/`, and the report's recall stages (`transition`, `generator`, and so on) now run through `mqar/execute_mqar.py`. The numbers in `results/pilot/` are unchanged. A shorter summary with the relevance of each finding is in `PILOT_FINDINGS.md`.
 
 All numbers come from `results/pilot/*.json`. The pilot ran in a Linux cloud sandbox (2 vCPU Xeon, torch 2.2.2, Python 3.11).
 Timings were also measured in the Linux VM that your desktop app exposes (4 vCPU, i5-1038NG7, torch 2.2.2, Python 3.10; `results/pilot_vm/`).

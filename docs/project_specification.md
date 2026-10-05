@@ -51,7 +51,7 @@ Three geometric facts motivate the design. They are reasoning, not results.
 
 **Varying D.** Only the query-key dimension of each head is shrunk. The value width stays at 16 per head, so the rest of the model is unchanged. The grid is D = 2, 4, 8, 12 and 16, where D = 16 is the default head size of the model (width 64 divided by 4 heads). D = 1 is skipped, because all L^p arms coincide there.
 
-**The recall task is shelved.** A synthetic recall task (MQAR) was considered as a controlled setting where head size and context size interact. It is shelved as of 2026-10-05. Its code, design decisions and pilot findings are in `shelved/mqar/`. The language model is run by itself first, and the full results decide whether the recall task is needed.
+**The recall task is shelved.** A synthetic recall task (MQAR) was considered as a controlled setting where head size and context size interact. It is shelved as of 2026-10-05. Its code, design decisions and pilot findings are in `shelved/pilot_v1/mqar/`. The language model is run by itself first, and the full results decide whether the recall task is needed.
 
 **Fairness safeguards.**
 - **Pairing.** Every arm with the same seed (the number that fixes randomness) sees the same data and starts from the same shared parameters, so differences are paired.
@@ -62,10 +62,13 @@ Three geometric facts motivate the design. They are reasoning, not results.
 
 ## 5. Relevant results from the pilot
 
+These come from version 1 of the project, which is shelved in `shelved/pilot_v1/`. Each finding is listed there, with its caveats and its relevance to this project, in `shelved/pilot_v1/PILOT_FINDINGS.md`. The full report is `shelved/pilot_v1/docs/pilot_report.md`. Every pilot run used head size 16, and no pilot number describes a small head.
+
 - At head dimension 16, the language-model arms are within seed noise of each other. Tied dot and L2 are indistinguishable, and p = infinity is slightly worse. This is why the project now turns to small heads.
 - Background (recall task, now shelved): on the recall task, small head dimension is where the dot product breaks down while the distance arms do not. At larger D every arm solves the task. The distance arms are all near perfect, so the recall task cannot rank the values of p.
 - At an adequate learning rate, convergence speed among the L^p arms shows no clear ordering. There is a weak hint that mid values of p learn faster early and that p = 1 and p = infinity learn slower. It rests on one seed.
 - Learning rate matters. The dot arm is more sensitive to it at small D than the distance arms.
+- The seed-to-seed spread of validation bpc is about 0.01, and the smallest difference detectable with five seeds is about 0.02 (finding 7 in the pilot findings).
 - The language model underfits: training loss is well above what a model of this kind could reach. So these experiments probe a regime limited by capacity as much as by attention.
 
 ## 6. Limitations
@@ -88,6 +91,8 @@ Three geometric facts motivate the design. They are reasoning, not results.
 
 **Calibration of the score scale (decided; closed 2026-10-05).** Different score functions give different spreads of scores across the keys. The softmax is sensitive to that spread, so an uncorrected comparison would partly measure how sharp each arm's attention happens to be at the start. Each arm therefore multiplies its score by a fixed constant, chosen so that the standard deviation of the scores across a query's allowed keys equals a common target of 1 at initialisation. The constant is measured once for each combination of head size, arm and layer, so it is recomputed for every head size in the experiment. The measurement uses a model built with a fixed calibration seed on fixed batches of text, and all seeds share the result. It excludes the masked diagonal and the early positions with fewer than about 8 allowed keys, and it proceeds layer by layer. A learned scale per head, starting at 1 for every arm, sits on top of the constant, so the model can sharpen or flatten its attention during training. Matching at initialisation is the whole scheme. We do not match the arms later in training, and we do not tune the scale per arm. The target of 1 is a convention that gives soft but not flat attention at the start, and no other target has been tested. A single standard deviation is a crude summary of the score distribution, because distance scores are more skewed than dot-product scores, and this is accepted. The calibrated constant for the tied dot product should land near one over the square root of the head dimension, which serves as a sanity check. The write-up must state that the scale was not tuned per arm and that the target was chosen by convention.
 
-**Shelving of the recall task (decided 2026-10-05).** The user shelved the recall task (MQAR) because the distance arms sit at its accuracy ceiling and the dot-product result depends on the learning rate, and because further pilots on it would not end. The code, the design decisions and the pilot findings were moved into `shelved/mqar/`, with its own entry point and tests, and the main engine was made task-agnostic so that the task plugs in. The language model is run by itself first. The full results then decide whether the recall task is needed.
+**Shelving of the recall task (decided 2026-10-05).** The user shelved the recall task (MQAR) because the distance arms sit at its accuracy ceiling and the dot-product result depends on the learning rate, and because further pilots on it would not end. The code, the design decisions and the pilot findings were moved into `shelved/pilot_v1/mqar/`, with its own entry point and tests, and the main engine was made task-agnostic so that the task plugs in. The language model is run by itself first. The full results then decide whether the recall task is needed.
+
+**Restart from scratch (decided 2026-10-05).** The user shelved all of the version 1 code, including the language-model code, the pilot report and the pilot results, in `shelved/pilot_v1/`, and the project is being rebuilt from scratch against this specification. The version 1 design record is `shelved/pilot_v1/DESIGN.md`. It marks which decisions still hold and which were unapproved implementation choices (r = 1e-12 and the direct p = 2 kernel). The grid of nine arms was confirmed on the same day.
 
 **Head-size grid (decided 2026-10-05).** The grid of head sizes is D = 2, 4, 8, 12 and 16. The user added D = 8 and D = 12 to the earlier first round of D = 2 and 4 beside the default D = 16.

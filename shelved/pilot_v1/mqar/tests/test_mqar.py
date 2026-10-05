@@ -1,8 +1,8 @@
 import numpy as np
 
 from msa import train
-from shelved.mqar import gen
-from shelved.mqar.task import make_cfg
+from mqar import gen
+from mqar.task import make_cfg
 
 
 def test_generator_properties():

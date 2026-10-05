@@ -39,7 +39,7 @@ DEFAULTS = {
 # ------------------------------------------------------------------ tasks (plug-ins)
 class Task:
     """What the engine needs from a task. The language model is the only built-in task; other tasks (for example the
-    shelved MQAR task in shelved/mqar) subclass this and call `register_task`. A config selects its task by name;
+    shelved MQAR task in mqar) subclass this and call `register_task`. A config selects its task by name;
     configs of an external task also carry `task_module`, so a worker process can import it before building the run."""
     name = None
     defaults = {}               # merged into the config (after DEFAULTS["common"])

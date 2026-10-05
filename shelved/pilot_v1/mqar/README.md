@@ -31,13 +31,13 @@ The original pilot outputs are still in `results/pilot/` (the MQAR ones are the 
 ## How the task plugs into the engine
 
 The engine in `msa/train.py` knows nothing about recall. A task is a subclass of `msa.train.Task` that is registered by name. A config
-carries the field `task_module = "shelved.mqar.task"`, so a worker process started with `spawn` can import the task before it builds the
+carries the field `task_module = "mqar.task"`, so a worker process started with `spawn` can import the task before it builds the
 run. The score module, the arms, the calibration routine and the shared-initialisation rule all come from `msa`.
 
 ## How to revive it
 
-1. Run the shelved tests: `python shelved/mqar/execute_mqar.py tests`.
-2. Run a quick check of one stage: `python shelved/mqar/execute_mqar.py generator`.
+1. Run the shelved tests: `python mqar/execute_mqar.py tests`.
+2. Run a quick check of one stage: `python mqar/execute_mqar.py generator`.
 3. Decide the open points listed at the end of `DESIGN.md` before launching anything larger. The main ones are the learning rate and the
    primary outcome.
 4. Re-check the shared decisions in `DESIGN.md` against the current specification (`docs/project_specification.md`), since the main

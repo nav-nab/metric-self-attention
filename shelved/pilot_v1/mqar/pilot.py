@@ -1,7 +1,7 @@
 """MQAR pilot stages (SHELVED). These are the recall-task stages of the original pilot, re-pointed at the plug-in task
-(shelved/mqar/task.py). Results go to results/mqar/ by default; the original pilot outputs stay in results/pilot/.
+(mqar/task.py). Results go to results/mqar/ by default; the original pilot outputs stay in results/pilot/.
 
-Run through `python shelved/mqar/execute_mqar.py <stage>`; see README.md in this folder.
+Run through `python mqar/execute_mqar.py <stage>`; see README.md in this folder.
 """
 import json
 import math
@@ -20,7 +20,7 @@ from . import gen
 from .model import build as build_mqar
 from .task import MQAR_VAL_SEED, make_cfg
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(__file__).resolve().parents[1]
 MQAR_OUT = ROOT / "results" / "mqar"
 
 

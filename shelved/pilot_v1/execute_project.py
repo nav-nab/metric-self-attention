@@ -20,7 +20,7 @@ Tests:
   python execute_project.py tests
 Options: --quick (tiny smoke version of a stage), --workers N (parallel processes), --threads N (threads per process),
          --out DIR (results directory).
-The recall task (MQAR) is shelved: see shelved/mqar/README.md and shelved/mqar/execute_mqar.py.
+The recall task (MQAR) is shelved: see mqar/README.md and mqar/execute_mqar.py.
 """
 import argparse
 import sys
@@ -51,7 +51,7 @@ def main():
     if a.stage == "tests":
         import pytest
         root = Path(__file__).resolve().parent
-        sys.exit(pytest.main(["-q", str(root / "tests"), str(root / "shelved")]))
+        sys.exit(pytest.main(["-q", str(root / "tests"), str(root / "mqar")]))
     from msa import pilot, full
     if a.stage == "full":
         full.run_full(a.config, workers=a.workers, threads=a.threads or 1, out=a.out, only_status=a.status)
