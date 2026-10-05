@@ -104,10 +104,10 @@ This section is the checklist for the design phase. The Notes below give the rea
 - The final weights of every run are saved and committed to git (decided 2026-10-05).
 - Five seeds per cell. The uniform control is a full arm with the same five seeds. The runs are made on the laptop (decided 2026-10-05).
 - The recall task (MQAR) is shelved, and the language model is run by itself first. The project is restarted from scratch.
-- The statistical plan (decided 2026-10-05). Seeds are blocks, and the outcome is validation bpc. There are two primary analyses: the interaction of D and p in a mixed model with the seed as a random effect, and the trend across D of the paired gap between each L^p arm and the tied dot product. The secondary analyses are the paired gap in each cell, contrasts across p and their change with D, and a bootstrap over seeds for the best p. An equivalence test is run only if a claim of equivalence is made, and its margin is deferred. The uniform control is used only as a descriptive scale and is not part of any test (decided 2026-10-05). The details are in the Notes.
+- The statistical plan (decided 2026-10-05). Seeds are blocks, and the outcome is validation bpc. There are two primary analyses: the interaction of D and p in a mixed model with the seed as a random effect, and the trend across D of the paired gap between each L^p arm and the tied dot product. The secondary analyses are the paired gap in each cell, contrasts across p and their change with D, and a bootstrap over seeds for the best p. An equivalence test is run only if a claim of equivalence is made, and its margin is deferred. The uniform control is used only as a descriptive scale and is not part of any test. No permutation tests are added, to keep the write-up easy to follow (both decided 2026-10-05). The details are in the Notes.
 
 **Open.** Each point will be settled with the user, in an order the user chooses.
-- None of the original open points remain. Details still undecided within the statistical plan: the equivalence margin (deferred, and needed only if test 6 is run), and whether permutation tests are added as a robustness check.
+- None of the original open points remain. One detail is deferred within the statistical plan: the equivalence margin, which is needed only if test 6 is run.
 
 ## 8. Possible future directions
 
