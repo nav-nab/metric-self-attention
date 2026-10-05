@@ -11,6 +11,7 @@ The first version of the code and its pilot are kept in `shelved/` as a record a
 
 * `docs/project_outline.md`: the overview of the project (question, background, motivation, experiment). Read this first.
 * `docs/design_details.md`: the settled decisions and the reasoning behind them. Read this second.
+* `docs/implementation_plan.md`: how the code will be organised, including interruption and resumption. A plan for review. Read this third.
 * `data/tinyshakespeare.txt`: the corpus (1,115,394 characters, md5 `6fb458f1232090904fb40fe944165e91`).
 * `requirements.txt`: the pinned environment (torch 2.2.2, numpy below 2).
 * `shelved/`: the first version. See `shelved/README.md`.
