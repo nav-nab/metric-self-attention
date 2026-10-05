@@ -45,7 +45,7 @@ Three geometric facts motivate the design. They are reasoning, not results.
 - tied dot product, as the control;
 - the seven L^p arms;
 - untied dot product, with separate query and key matrices, as a reference that shows the cost of tying;
-- a **uniform control**, in which every allowed key gets the same weight. It is not a real candidate. It shows how much of the result attention can move at all, and so gives scale to every difference.
+- a **uniform control**, in which every allowed key gets the same weight. It is not a real candidate. It shows how much of the result attention can move at all, and so gives scale to every difference. It is a full arm and gets the same number of seeds as the others.
 
 **The main task.** A small character-level language model on Tiny Shakespeare, about 1.1 million characters from Shakespeare's plays. The model is a two-layer transformer of width 64, with four heads and a context of 64 characters. The score is **validation bits per character (bpc)**, the average information the model needs per character on held-out text. Lower is better.
 
@@ -55,7 +55,7 @@ Three geometric facts motivate the design. They are reasoning, not results.
 
 **Fairness safeguards.**
 - **Pairing.** Every arm with the same seed (the number that fixes randomness) sees the same data and starts from the same shared parameters, so differences are paired.
-- **Replication.** About five seeds per cell.
+- **Replication.** Five seeds per cell.
 - **Learning rate.** The best learning rate may depend on D, and this is a real risk. In the pilot, the dot arm needed a far higher rate at small D, and a shared low rate gave the false impression that distance was better. A short rate scan at each D should come before the main round.
 
 **The outcome.** Validation bpc for each (D, arm) cell. The analysis looks at the whole surface: how the gap to the dot product changes with D, and how the ranking of p changes with D.
@@ -91,18 +91,17 @@ This section is the checklist for the design phase. The Notes below give the rea
 - The score is minus the distance, scaled by a learned factor per head (initial value 1) and a frozen calibrated constant. The constant is chosen so that the standard deviation of the scores equals 1 at initialisation, and it is recomputed for every head size, arm and layer. Matching at initialisation is the whole scheme, and the scale is not tuned per arm.
 - The epsilon inside the root is relative to the typical size of the sum inside the root. The value of the ratio is open. The p = infinity distance is the largest coordinate difference, with no smoothing.
 - No normalisation of queries and keys. Learned absolute positions. The dependence of non-L2 metrics on the coordinate axes is accepted and flagged.
-- The model: two layers, width 64, four heads, MLP width four times the width, context 64 characters, tied input and output embeddings. The corpus is Tiny Shakespeare split 90/10, and the outcome is validation bpc.
-- The final weights of every run are saved.
+- The model: two layers, width 64, four heads, MLP width four times the width, context 64 characters (provisional; see the open list), tied input and output embeddings. The corpus is Tiny Shakespeare split 90/10, and the outcome is validation bpc.
+- The final weights of every run are saved and committed to git (decided 2026-10-05).
+- Five seeds per cell. The uniform control is a full arm with the same five seeds. The runs are made on the laptop (decided 2026-10-05).
 - The recall task (MQAR) is shelved, and the language model is run by itself first. The project is restarted from scratch.
 
 **Open.** Each point will be settled with the user, in an order the user chooses.
 - The relative epsilon ratio r. The value 1e-12 is a proposal and is not approved.
 - The p = 2 kernel. The proposal is to compute differences directly, as for every other p, and not to use the matrix-multiply expansion.
 - The learning-rate protocol per D, and the learning rate of the language model.
-- The number of seeds per cell. About five is the working figure.
-- Whether the uniform control is a full arm or a single reference run.
 - The statistical plan. The earlier plan paired arms by seed and compared each L^p arm with the tied dot product under a multiple-comparison correction. It has not been re-confirmed for the new design.
-- Laptop or cloud (the budget is about 48 hours on a 2020 Intel MacBook), context length 64 or 128, whether to commit the weights, and which optional extras to run.
+- The context length (64 or 128) and which optional extras to run.
 
 ## Notes
 

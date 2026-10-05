@@ -3,7 +3,7 @@
 Does replacing the query-key dot product in self-attention by a negative L^p distance score change what a transformer can learn?
 The project studies how the head size D (the query-key dimension per head) interacts with the choice of p. The main experiment is a
 small character-level language model on Tiny Shakespeare, run over head sizes D = 2, 4, 8, 12 and 16 with nine arms: the tied dot
-product, seven L^p distances (p = 1, 1.5, 2, 3, 4, 8, infinity) and the untied dot product. A uniform-attention control is added.
+product, seven L^p distances (p = 1, 1.5, 2, 3, 4, 8, infinity) and the untied dot product. A uniform-attention control is a full arm too. Five seeds per cell, run on the laptop, with the final weights committed.
 
 **Status (2026-10-05): design phase.** The project is being rebuilt from scratch, and no code or run exists yet. The specification is a
 draft, and its issues are being settled one at a time. Section 7 of the specification lists what is settled and what is open.
