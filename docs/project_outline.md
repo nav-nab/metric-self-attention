@@ -57,11 +57,11 @@ Three geometric facts motivate the design. They are reasoning, not results.
 **Fairness safeguards.**
 - **Pairing.** Every arm with the same seed (the number that fixes randomness) sees the same data and starts from the same shared parameters, so differences are paired.
 - **Replication.** Five seeds per cell.
-- **Learning rate.** The best learning rate may depend on D and on the arm, and this is a real risk. In the earlier work, the dot arm needed a far higher rate at small D, and a shared low rate gave the false impression that distance was better. Each arm therefore gets its own rate at each D, chosen by a scan on a fixed grid. The protocol is described in `design_details.md`, section 5.
+- **Learning rate.** The best learning rate may depend on D and on the arm, and this is a real risk. In the earlier work, the dot arm needed a far higher rate at small D, and a shared low rate gave the false impression that distance was better. Each arm therefore gets its own rate at each D, chosen by a scan on a fixed grid. The protocol is described in `design_details.md`, section 8.
 
 **Training length.** Each run takes 4,000 optimiser steps.
 
-**The outcome.** Validation bpc for each (D, arm) cell. The analysis looks at the whole surface: how the gap to the dot product changes with D, and how the ranking of p changes with D. The statistical analysis treats the seeds as blocks. Its two main questions are whether the effect of p depends on D, and how the gap between each L^p arm and the tied dot product changes with D. Secondary analyses report the gap in each cell, the shape of the effect of p, and how often each p is best. The full plan is in `design_details.md`, section 6.
+**The outcome.** Validation bpc for each (D, arm) cell. The analysis looks at the whole surface: how the gap to the dot product changes with D, and how the ranking of p changes with D. The statistical analysis treats the seeds as blocks. Its two main questions are whether the effect of p depends on D, and how the gap between each L^p arm and the tied dot product changes with D. Secondary analyses report the gap in each cell, the shape of the effect of p, and how often each p is best. The full plan is in `design_details.md`, section 9.
 
 ## 5. Relevant results from the pilot
 
