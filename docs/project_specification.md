@@ -1,6 +1,6 @@
 # Metric self-attention: head size and the choice of p
 
-**Status: DRAFT for revision.** Recorded 2026-10-05. This is the proposal rewritten to centre on the interaction between head size and the choice of p. It is to be edited before any full run is launched. Nothing here is a final decision. The earlier, broader proposal is kept in `shelved/pilot_v1/docs/project_specification_v1_original_design.md`.
+**Status: DRAFT, design phase.** Last updated 2026-10-05. This is the proposal centred on the interaction between head size and the choice of p. The project is being rebuilt from scratch against it, and no code or run exists yet. The issues are being settled one at a time, and section 7 lists what is settled and what is open. Nothing in this document is a final plan until section 7 says so. The earlier version of the project is kept in `shelved/` as a record.
 
 This document is for a reader who has not seen the project. It keeps the pilot results that bear on the central question and leaves out the rest.
 
@@ -79,11 +79,30 @@ These come from version 1 of the project, which is shelved in `shelved/pilot_v1/
 - Seed noise is about 0.01 bpc, so only differences above roughly 0.02 are detectable with five seeds.
 - The tie and the diagonal mask apply to most arms and may shape results more than the score does.
 
-## 7. Choices that remain open
+## 7. Design status
 
-- The learning-rate protocol per D.
-- The language-model learning rate and the number of seeds.
+This section is the checklist for the design phase. The Notes below give the reasoning for some of the settled points.
+
+**Settled** (the user's decisions; dates are 2026-10-05 unless given).
+- The question: how head size D and the choice of p interact, studied on the language model alone.
+- The arms: the tied dot product as the control, the seven L^p arms (p = 1, 1.5, 2, 3, 4, 8, infinity), and the untied dot product as a reference. This nine-arm grid is confirmed. The uniform control is added to it, and its status is open (below).
+- The head-size grid: D = 2, 4, 8, 12 and 16. Only the query-key dimension changes, and the value width stays at 16 per head. D = 1 is skipped.
+- Queries and keys are tied in every arm except the untied reference. The diagonal is masked for all arms, and position 0 may attend to itself.
+- The score is minus the distance, scaled by a learned factor per head (initial value 1) and a frozen calibrated constant. The constant is chosen so that the standard deviation of the scores equals 1 at initialisation, and it is recomputed for every head size, arm and layer. Matching at initialisation is the whole scheme, and the scale is not tuned per arm.
+- The epsilon inside the root is relative to the typical size of the sum inside the root. The value of the ratio is open. The p = infinity distance is the largest coordinate difference, with no smoothing.
+- No normalisation of queries and keys. Learned absolute positions. The dependence of non-L2 metrics on the coordinate axes is accepted and flagged.
+- The model: two layers, width 64, four heads, MLP width four times the width, context 64 characters, tied input and output embeddings. The corpus is Tiny Shakespeare split 90/10, and the outcome is validation bpc.
+- The final weights of every run are saved.
+- The recall task (MQAR) is shelved, and the language model is run by itself first. The project is restarted from scratch.
+
+**Open.** Each point will be settled with the user, in an order the user chooses.
+- The relative epsilon ratio r. The value 1e-12 is a proposal and is not approved.
+- The p = 2 kernel. The proposal is to compute differences directly, as for every other p, and not to use the matrix-multiply expansion.
+- The learning-rate protocol per D, and the learning rate of the language model.
+- The number of seeds per cell. About five is the working figure.
 - Whether the uniform control is a full arm or a single reference run.
+- The statistical plan. The earlier plan paired arms by seed and compared each L^p arm with the tied dot product under a multiple-comparison correction. It has not been re-confirmed for the new design.
+- Laptop or cloud (the budget is about 48 hours on a 2020 Intel MacBook), context length 64 or 128, whether to commit the weights, and which optional extras to run.
 
 ## Notes
 
