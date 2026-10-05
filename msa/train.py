@@ -1,4 +1,5 @@
-"""Training loop (both tasks) with checkpoint/resume, logging, diagnostics and final-weight saving.
+"""Training engine: checkpoint/resume, logging, attention diagnostics and final-weight saving, for any registered task.
+The language model is the built-in task; further tasks plug in through the Task class below.
 
 One run = one (task, arm, seed, config). Everything a run needs is in its config dict, so the
 same function is used by the pilot and by the full runs. A run directory contains
@@ -10,6 +11,7 @@ same function is used by the pilot and by the full runs. A run directory contain
 If result.json and final.pt exist the run is skipped; otherwise it resumes from ckpt.pt if present.
 """
 import copy
+import importlib
 import json
 import math
 import os
@@ -22,40 +24,83 @@ import torch.nn.functional as F
 
 from . import calibration as cal
 from . import evaluate as ev
-from . import mqar_gen
 from .lm_data import LMData
-from .models import CharLM, MQARModel, init_model
-
-MQAR_VAL_SEED, MQAR_TEST_SEED = 777001, 777002
+from .models import CharLM, init_model
 
 DEFAULTS = {
     "common": dict(seed=0, lr=1e-3, wd=0.01, clip=1.0, warmup=100, min_lr_frac=0.1, target=1.0, r=1e-12,
                    impl="auto", chunk=4, threads=2, log_every=50, ckpt_every=250, diag_every=250),
-    "lm": dict(task="lm", d_model=64, n_layers=2, n_heads=4, T=64, mlp_mult=4, batch=64, steps=2500,
+    # qk_dim: query-key width per head; None means d_model / n_heads. The value width per head is always d_model / n_heads.
+    "lm": dict(task="lm", d_model=64, n_layers=2, n_heads=4, qk_dim=None, T=64, mlp_mult=4, batch=64, steps=2500,
                eval_every=250, eval_windows_mid=400),
-    "mqar": dict(task="mqar", P=16, Q=None, D=16, d_model=64, n_keys=256, n_vals=64, batch=128, steps=3000,
-                 eval_every=100, n_val=5000, n_test=5000, n_val_mid=2000),
 }
 
 
-def make_cfg(task, arm, **kw):
-    cfg = copy.deepcopy(DEFAULTS["common"])
-    cfg.update(copy.deepcopy(DEFAULTS[task]))
-    cfg["arm"] = arm
-    cfg.update(kw)
-    if task == "mqar" and cfg["Q"] is None:
-        cfg["Q"] = cfg["P"] // 2          # decision: Q = P/2
-    return cfg
+# ------------------------------------------------------------------ tasks (plug-ins)
+class Task:
+    """What the engine needs from a task. The language model is the only built-in task; other tasks (for example the
+    shelved MQAR task in shelved/mqar) subclass this and call `register_task`. A config selects its task by name;
+    configs of an external task also carry `task_module`, so a worker process can import it before building the run."""
+    name = None
+    defaults = {}               # merged into the config (after DEFAULTS["common"])
+    calib_fields = ()           # config fields that determine the calibration constants
+    curve_key = None            # metric logged at each evaluation ("val_bpc", "val_acc", ...)
+
+    def finalize_cfg(self, cfg):                 # in-place completion of derived fields
+        pass
+
+    def cell(self, cfg):                         # part of the run id
+        raise NotImplementedError
+
+    def build_model(self, cfg, seed):            # returns an initialised model (use msa.models.init_model)
+        raise NotImplementedError
+
+    def calibration_fns(self, cfg, rng, n_batches=8):    # callables f(model) running one fixed calibration batch
+        raise NotImplementedError
+
+    def setup(self, cfg):                        # returns the task's data/state object
+        raise NotImplementedError
+
+    def train_loss(self, state, model, rng, cfg):
+        raise NotImplementedError
+
+    def diag_loss(self, state, model):           # loss on a fixed small batch, for attention diagnostics
+        raise NotImplementedError
+
+    def evaluate(self, state, model, cfg, final):    # returns a row containing curve_key
+        raise NotImplementedError
+
+    def result_header(self, cfg):
+        return {}
+
+    def finalize(self, state, model, cfg, result):   # extras added to the result after the final evaluation
+        pass
+
+    def finalize_curve(self, result, curve):
+        pass
 
 
-def run_id(cfg, tag=""):
-    t = cfg["task"]
-    cell = f"P{cfg['P']}_D{cfg['D']}" if t == "mqar" else "lm"
-    extra = f"_{cfg['tag']}" if cfg.get("tag") else ""        # cfg['tag'] distinguishes runs that differ only in e.g. the learning rate
-    return f"{t}_{cell}_{cfg['arm']}_s{cfg['seed']}{extra}" + (f"_{tag}" if tag else "")
+TASKS = {}
 
 
-# ------------------------------------------------------------------ construction
+def register_task(task):
+    TASKS[task.name] = task
+    DEFAULTS.setdefault(task.name, copy.deepcopy(task.defaults))
+    return task
+
+
+def _import_task(name, module):
+    if name not in TASKS and module:
+        importlib.import_module(module)
+    if name not in TASKS:
+        raise KeyError(f"unknown task {name!r}; external tasks must be imported (config key task_module)")
+
+
+def get_task(cfg):
+    _import_task(cfg["task"], cfg.get("task_module"))
+    return TASKS[cfg["task"]]
+
+
 _LM_DATA = {}
 
 
@@ -65,32 +110,75 @@ def get_lm_data(T):
     return _LM_DATA[T]
 
 
-def build_model(cfg, seed=None):
-    seed = cfg["seed"] if seed is None else seed
-    if cfg["task"] == "lm":
+class LMTask(Task):
+    name = "lm"
+    defaults = DEFAULTS["lm"]
+    calib_fields = ("T", "d_model", "n_layers", "n_heads", "mlp_mult", "qk_dim")
+    curve_key = "val_bpc"
+
+    def cell(self, cfg):
+        return "lm" if not cfg.get("qk_dim") else f"lm_D{cfg['qk_dim']}"
+
+    def build_model(self, cfg, seed):
         data = get_lm_data(cfg["T"])
         m = CharLM(cfg["arm"], data.vocab, cfg["d_model"], cfg["n_layers"], cfg["n_heads"], cfg["T"],
-                   cfg["mlp_mult"], cfg["impl"], cfg["chunk"])
-    else:
-        m = MQARModel(cfg["arm"], cfg["n_keys"], cfg["n_vals"], cfg["d_model"], cfg["D"], cfg["impl"], cfg["chunk"])
-    return init_model(m, seed)
+                   cfg["mlp_mult"], cfg["impl"], cfg["chunk"], cfg.get("qk_dim"))
+        return init_model(m, seed)
+
+    def calibration_fns(self, cfg, rng, n_batches=8):
+        data = get_lm_data(cfg["T"])
+        fns = []
+        for _ in range(n_batches):
+            x, _y = data.batch(rng, 32)
+            fns.append(lambda m, x=x: m(x))
+        return fns
+
+    def setup(self, cfg):
+        return get_lm_data(cfg["T"])
+
+    def train_loss(self, data, model, rng, cfg):
+        x, y = data.batch(rng, cfg["batch"])
+        out = model(x)
+        return F.cross_entropy(out.reshape(-1, out.shape[-1]), y.reshape(-1))
+
+    def diag_loss(self, data, model):
+        out = model(data.val_x[:64])
+        return F.cross_entropy(out.reshape(-1, out.shape[-1]), data.val_y[:64].reshape(-1))
+
+    def evaluate(self, data, model, cfg, final):
+        r = ev.eval_lm(model, data.val_x, data.val_y, max_windows=None if final else cfg["eval_windows_mid"])
+        return {"val_loss": r["loss"], "val_bpc": r["bpc"]}
+
+
+register_task(LMTask())
+
+
+def make_cfg(task, arm, task_module=None, **kw):
+    _import_task(task, task_module)
+    cfg = copy.deepcopy(DEFAULTS["common"])
+    cfg.update(copy.deepcopy(DEFAULTS[task]))
+    cfg["arm"] = arm
+    if task_module:
+        cfg["task_module"] = task_module
+    cfg.update(kw)
+    TASKS[task].finalize_cfg(cfg)
+    return cfg
+
+
+def run_id(cfg, tag=""):
+    extra = f"_{cfg['tag']}" if cfg.get("tag") else ""        # cfg['tag'] distinguishes runs that differ only in e.g. the learning rate
+    return f"{cfg['task']}_{get_task(cfg).cell(cfg)}_{cfg['arm']}_s{cfg['seed']}{extra}" + (f"_{tag}" if tag else "")
+
+
+# ------------------------------------------------------------------ construction
+def build_model(cfg, seed=None):
+    """A freshly initialised model (the task builds it and applies the shared per-parameter-name initialisation)."""
+    return get_task(cfg).build_model(cfg, cfg["seed"] if seed is None else seed)
 
 
 def calibration_fns(cfg, n_batches=8):
     """Fixed calibration batches (calibration seed, identical for all arms)."""
-    rng = np.random.default_rng(cal.CALIB_SEED)
-    fns = []
-    if cfg["task"] == "lm":
-        data = get_lm_data(cfg["T"])
-        for _ in range(n_batches):
-            x, _y = data.batch(rng, 32)
-            fns.append(lambda m, x=x: m(x))
-    else:
-        for _ in range(n_batches):
-            c, q, _t = mqar_gen.make_batch(rng, 128, cfg["P"], cfg["Q"], cfg["n_keys"], cfg["n_vals"])
-            c, q = torch.from_numpy(c), torch.from_numpy(q)
-            fns.append(lambda m, c=c, q=q: m(c, q))
-    return fns
+    return get_task(cfg).calibration_fns(cfg, np.random.default_rng(cal.CALIB_SEED), n_batches)
 
 
 _CAL_CACHE = {}
@@ -98,8 +186,8 @@ _CAL_CACHE = {}
 
 def get_constants(cfg):
     """Calibrate on a model initialised with the calibration seed; deterministic and shared across seeds."""
-    key = json.dumps({k: cfg[k] for k in ("task", "arm", "target", "r", "impl", "chunk") + (
-        ("P", "Q", "D", "d_model", "n_keys", "n_vals") if cfg["task"] == "mqar" else ("T", "d_model", "n_layers", "n_heads", "mlp_mult"))}, sort_keys=True)
+    task = get_task(cfg)
+    key = json.dumps({k: cfg[k] for k in ("task", "arm", "target", "r", "impl", "chunk") + tuple(task.calib_fields)}, sort_keys=True)
     if key not in _CAL_CACHE:
         m = build_model(cfg, seed=cal.CALIB_SEED)
         _CAL_CACHE[key] = cal.calibrate_model(m, calibration_fns(cfg), cfg["target"], cfg["r"])
@@ -128,13 +216,6 @@ def _data_rng(cfg):
     return np.random.default_rng(1000 + cfg["seed"])
 
 
-def _mqar_sets(cfg):
-    P, Q, K, V = cfg["P"], cfg["Q"], cfg["n_keys"], cfg["n_vals"]
-    val = mqar_gen.fixed_set(MQAR_VAL_SEED + P, cfg["n_val"], P, Q, K, V)
-    test = mqar_gen.fixed_set(MQAR_TEST_SEED + P, cfg["n_test"], P, Q, K, V)
-    return val, test
-
-
 def _atomic_save(obj, path):
     tmp = str(path) + ".tmp"
     torch.save(obj, tmp)
@@ -143,6 +224,7 @@ def _atomic_save(obj, path):
 
 def run(cfg, out_root, tag="", verbose=True, stop_at_step=None):
     """Train one run. Returns result dict. `stop_at_step` is for testing interruption."""
+    task = get_task(cfg)
     out = Path(out_root) / run_id(cfg, tag)
     out.mkdir(parents=True, exist_ok=True)
     if (out / "result.json").exists() and (out / "final.pt").exists():
@@ -171,15 +253,12 @@ def run(cfg, out_root, tag="", verbose=True, stop_at_step=None):
         logf.write(json.dumps(r) + "\n")
     logf.flush()
 
-    task = cfg["task"]
-    if task == "lm":
-        data = get_lm_data(cfg["T"])
-    else:
-        val, test = _mqar_sets(cfg)
+    key = task.curve_key
+    state = task.setup(cfg)
     t0 = time.time()
     run_loss, run_n, run_gn, max_gn = 0.0, 0, 0.0, 0.0
     diverged, div_step = False, None
-    curve = [r for r in log_rows if "val_acc" in r or "val_bpc" in r]
+    curve = [r for r in log_rows if key in r]
 
     def log(row):
         row["step"] = step
@@ -187,33 +266,8 @@ def run(cfg, out_root, tag="", verbose=True, stop_at_step=None):
         logf.write(json.dumps(row) + "\n")
         logf.flush()
 
-    def diag_batch():
-        if task == "lm":
-            return data.val_x[:64], data.val_y[:64]
-        return val[0][:256], val[1][:256], val[2][:256]
-
     def diag_fn(m):
-        b = diag_batch()
-        if task == "lm":
-            out_ = m(b[0])
-            return F.cross_entropy(out_.reshape(-1, out_.shape[-1]), b[1].reshape(-1))
-        c, q, t = (torch.from_numpy(x) for x in b)
-        out_ = m(c, q)
-        return F.cross_entropy(out_.reshape(-1, out_.shape[-1]), t.reshape(-1))
-
-    def evaluate(final=False):
-        row = {}
-        if task == "lm":
-            r = ev.eval_lm(model, data.val_x, data.val_y, max_windows=None if final else cfg["eval_windows_mid"])
-            row.update(val_loss=r["loss"], val_bpc=r["bpc"])
-        else:
-            n = None if final else cfg["n_val_mid"]
-            sl = slice(0, n)
-            r = ev.eval_mqar(model, val[0][sl], val[1][sl], val[2][sl], diag=final)
-            row.update(val_acc=r["acc"], val_loss=r["loss"])
-            if final:
-                row["val_diag"] = {k: v for k, v in r.items() if k not in ("acc", "loss")}
-        return row
+        return task.diag_loss(state, m)
 
     train_t = 0.0
     end = min(cfg["steps"], cfg.get("stop_after") or cfg["steps"])   # stop_after: truncate a run (LR safeguard trials) while keeping the full-length schedule
@@ -228,15 +282,7 @@ def run(cfg, out_root, tag="", verbose=True, stop_at_step=None):
         for g in opt.param_groups:
             g["lr"] = lr
         ts = time.time()
-        if task == "lm":
-            x, y = data.batch(rng, cfg["batch"])
-            out_ = model(x)
-            loss = F.cross_entropy(out_.reshape(-1, out_.shape[-1]), y.reshape(-1))
-        else:
-            c, q, t = mqar_gen.make_batch(rng, cfg["batch"], cfg["P"], cfg["Q"], cfg["n_keys"], cfg["n_vals"])
-            c, q, t = torch.from_numpy(c), torch.from_numpy(q), torch.from_numpy(t)
-            out_ = model(c, q)
-            loss = F.cross_entropy(out_.reshape(-1, out_.shape[-1]), t.reshape(-1))
+        loss = task.train_loss(state, model, rng, cfg)
         opt.zero_grad(set_to_none=True)
         loss.backward()
         gn = float(torch.nn.utils.clip_grad_norm_(model.parameters(), cfg["clip"]))
@@ -254,14 +300,13 @@ def run(cfg, out_root, tag="", verbose=True, stop_at_step=None):
                  "grad_norm_max": max_gn, "sec_per_step": train_t / max(1, step)})
             run_loss, run_n, run_gn, max_gn = 0.0, 0, 0.0, 0.0
         if step % cfg["eval_every"] == 0 or step == end:
-            row = evaluate(final=False)
+            row = task.evaluate(state, model, cfg, final=False)
             if step % cfg["diag_every"] == 0 or step == end:
                 row["layers"] = ev.collect_scorer_stats(model, diag_fn)
                 row["layers_grad"] = ev.collect_scorer_stats(model, diag_fn, with_grad=True)
             log(row)
             curve.append({"step": step, **row})
             if verbose:
-                key = "val_bpc" if task == "lm" else "val_acc"
                 print(f"  {run_id(cfg, tag)} step {step}/{cfg['steps']} {key}={row[key]:.4f} "
                       f"({wall_prev + time.time() - t0:.0f}s)", flush=True)
         if step % cfg["ckpt_every"] == 0 and step < end:
@@ -269,26 +314,17 @@ def run(cfg, out_root, tag="", verbose=True, stop_at_step=None):
                           "rng": rng.bit_generator.state, "wall": wall_prev + time.time() - t0}, out / "ckpt.pt")
 
     wall = wall_prev + time.time() - t0
-    result = {"run_id": run_id(cfg, tag), "arm": cfg["arm"], "seed": cfg["seed"], "task": task,
+    result = {"run_id": run_id(cfg, tag), "arm": cfg["arm"], "seed": cfg["seed"], "task": cfg["task"],
               "steps_done": step, "diverged": diverged, "diverged_step": div_step, "wall_seconds": wall,
               "constants": consts}
-    if task == "mqar":
-        result["P"], result["D"], result["Q"] = cfg["P"], cfg["D"], cfg["Q"]
+    result.update(task.result_header(cfg))
     if not diverged:
-        fin = evaluate(final=True)
-        result["final_val"] = fin
-        if task == "mqar":
-            result["final_test"] = ev.eval_mqar(model, test[0], test[1], test[2])
-            result["sanity"] = ev.mqar_sanity(model, val[0], val[1], val[2])
-            result["baselines"] = mqar_gen.baselines(cfg["P"], cfg["n_vals"])
+        result["final_val"] = task.evaluate(state, model, cfg, final=True)
+        task.finalize(state, model, cfg, result)
         result["layers"] = ev.collect_scorer_stats(model, diag_fn)
         result["layers_grad"] = ev.collect_scorer_stats(model, diag_fn, with_grad=True)
-    key = "val_bpc" if task == "lm" else "val_acc"
     result["curve"] = [{"step": c["step"], key: c[key]} for c in curve if key in c]
-    if task == "mqar":   # steps to reach accuracy thresholds (evaluation granularity = eval_every)
-        for thr in (0.5, 0.9, 0.99):
-            hit = [c["step"] for c in curve if c.get("val_acc", 0) >= thr]
-            result[f"steps_to_{int(thr * 100)}"] = hit[0] if hit else None
+    task.finalize_curve(result, curve)
     torch.save({"state_dict": model.state_dict(), "cfg": cfg, "constants": consts, "result_summary":
                 {k: v for k, v in result.items() if k not in ("curve", "layers", "layers_grad")}}, out / "final.pt")
     json.dump(result, open(out / "result.json", "w"), indent=1)

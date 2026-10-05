@@ -28,7 +28,8 @@ def test_shared_init_across_arms():
     assert "blocks.0.attn.W_k.weight" in dict(c.named_parameters())
 
 
+
 def test_dot_constant_near_inverse_sqrt_D():
-    cfg = train.make_cfg("mqar", "dot_tied", D=16)
+    cfg = train.make_cfg("lm", "dot_tied")      # head size 16 (d_model 64 / 4 heads)
     c = train.get_constants(cfg)[0]["c"]
     assert 0.15 < c < 0.35   # 1/sqrt(16) = 0.25

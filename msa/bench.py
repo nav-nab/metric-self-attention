@@ -2,8 +2,8 @@
 
 Single measurement (used by the stage driver):
   python -m msa.bench kernel --p 3 --impl custom --chunk 16 --B 8 --H 4 --T 128 --D 32 --L 4
-  python -m msa.bench model  --task lm   --arm lp_3 --impl custom --chunk 16 --B 64 --threads 2
-  python -m msa.bench model  --task mqar --arm lp_3 --P 64 --D 16 --B 128
+  python -m msa.bench model  --arm lp_3 --impl custom --chunk 16 --B 64 --threads 2 [--qk-dim 4]
+(The model measurement is the language model. A shelved task can be timed by registering it and passing --task and --task-module.)
 Each prints one JSON line: sec_per_step, peak_rss_mb, base_rss_mb (RSS before the timed steps).
 """
 import argparse
@@ -44,29 +44,22 @@ def bench_kernel(a):
 
 
 def bench_model(a):
+    from . import calibration as cal
     from . import train
     kw = dict(impl=a.impl, chunk=a.chunk, threads=a.threads, batch=a.B)
-    if a.task == "mqar":
-        kw.update(P=a.P, D=a.D)
-    cfg = train.make_cfg(a.task, a.arm, **kw)
+    if a.qk_dim:
+        kw["qk_dim"] = a.qk_dim
+    cfg = train.make_cfg(a.task, a.arm, task_module=a.task_module, **kw)
     torch.set_num_threads(a.threads)
     model = train.build_model(cfg)
-    from . import calibration as cal
     cal.set_constants(model, train.get_constants(cfg))
     opt = torch.optim.AdamW(model.parameters(), lr=1e-4)
+    task = train.get_task(cfg)
+    state = task.setup(cfg)
     rng = np.random.default_rng(0)
-    if a.task == "lm":
-        data = train.get_lm_data(cfg["T"])
-        mk = lambda: data.batch(rng, cfg["batch"])
-    else:
-        from . import mqar_gen
-        def mk():
-            c, q, t = mqar_gen.make_batch(rng, cfg["batch"], cfg["P"], cfg["Q"], cfg["n_keys"], cfg["n_vals"])
-            return (torch.from_numpy(c), torch.from_numpy(q)), torch.from_numpy(t)
+
     def step():
-        x, y = mk()
-        out = model(*x) if a.task == "mqar" else model(x)
-        loss = F.cross_entropy(out.reshape(-1, out.shape[-1]), y.reshape(-1))
+        loss = task.train_loss(state, model, rng, cfg)
         opt.zero_grad(); loss.backward(); opt.step()
     base = _rss_mb()   # after model/data/calibration, before the first training step
     step()
@@ -84,8 +77,8 @@ def main(argv=None):
     ap.add_argument("--chunk", type=int, default=16); ap.add_argument("--causal", type=int, default=0)
     ap.add_argument("--B", type=int, default=64); ap.add_argument("--H", type=int, default=4)
     ap.add_argument("--T", type=int, default=128); ap.add_argument("--D", type=int, default=16)
-    ap.add_argument("--L", type=int, default=1); ap.add_argument("--P", type=int, default=16)
-    ap.add_argument("--task", default="lm"); ap.add_argument("--arm", default="lp_3")
+    ap.add_argument("--L", type=int, default=1); ap.add_argument("--qk-dim", type=int, default=None)
+    ap.add_argument("--task", default="lm"); ap.add_argument("--task-module", default=None); ap.add_argument("--arm", default="lp_3")
     ap.add_argument("--threads", type=int, default=2); ap.add_argument("--reps", type=int, default=5)
     a = ap.parse_args(argv)
     res = bench_kernel(a) if a.mode == "kernel" else bench_model(a)

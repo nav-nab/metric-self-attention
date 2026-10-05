@@ -1,36 +1,36 @@
 #!/usr/bin/env python
-"""Single entry point for the whole project (pilot checks, benchmarks, and the full runs).
+"""Single entry point for the project (language-model pilot checks, benchmarks, and the full runs).
 
-Pilot stages (each writes results/pilot/<stage>.json):
-  python execute_project.py env            environment check + smoke training step
+Stages (each writes results/pilot/<stage>.json):
+  python execute_project.py env            environment check + smoke training steps (incl. a small head and the uniform control)
   python execute_project.py gradcheck      float64 gradient check, custom kernel vs naive autograd
-  python execute_project.py generator      MQAR generator checks, baselines, sanity checks
-  python execute_project.py bench          timing and memory per arm at real model sizes (both tasks)
-  python execute_project.py calibrate      calibration constants, typical sums inside the root
-  python execute_project.py transition     recall transition scan (accuracy vs P, D per arm)
+  python execute_project.py bench          timing and memory per arm (head size 16 and small head sizes)
+  python execute_project.py calibrate      calibration constants and typical sums inside the root, per head size
+  python execute_project.py epsilon        gradient safety of the relative epsilon r
   python execute_project.py lr             learning-rate safeguard (base rate and 3x, truncated runs)
-  python execute_project.py epsilon        choice of the relative epsilon r (uses the trained models from the lr stage)
-  python execute_project.py lr_scan        full-length runs at several learning rates
-  python execute_project.py lr_arms        all arms x several learning rates on the recall task
-  python execute_project.py transition_ext probe beyond P=64 (1024 keys) for dot_tied and lp_2 (informs the primary outcome)
-  python execute_project.py seedvar        seed variance, paired differences
+  python execute_project.py lr_scan        full-length runs at several learning rates (head size 16)
+  python execute_project.py seedvar        seed variance, paired differences (head size 16)
+  python execute_project.py lm_small_d_lr  small query-key dimension: rate scan and uniform control
+  python execute_project.py lm_small_d     small query-key dimension: all arms, paired seeds (use --lr-lm, --Ds, --seeds)
   python execute_project.py budget         run-time table and budget projection
-  python execute_project.py pilot          all of the above in order
-Full experiment (resumable):
+  python execute_project.py pilot          env, gradcheck, bench, calibrate, epsilon, lr, lr_scan, seedvar, budget in order
+Full experiment (resumable; the config format is documented in msa/full.py):
   python execute_project.py full --config configs/full.json --workers 2 [--status]
 Tests:
   python execute_project.py tests
 Options: --quick (tiny smoke version of a stage), --workers N (parallel processes), --threads N (threads per process),
          --out DIR (results directory).
+The recall task (MQAR) is shelved: see shelved/mqar/README.md and shelved/mqar/execute_mqar.py.
 """
 import argparse
 import sys
 import time
+from pathlib import Path
 
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("stage", choices=["env", "gradcheck", "generator", "bench", "calibrate", "transition", "epsilon", "lr", "lr_scan", "lr_arms", "transition_ext", "seedvar",
+    ap.add_argument("stage", choices=["env", "gradcheck", "bench", "calibrate", "epsilon", "lr", "lr_scan", "seedvar", "lm_small_d_lr", "lm_small_d",
                                       "budget", "pilot", "full", "tests"])
     ap.add_argument("--quick", action="store_true")
     ap.add_argument("--workers", type=int, default=1)
@@ -40,18 +40,18 @@ def main():
     ap.add_argument("--status", action="store_true")
     ap.add_argument("--laptop-factor", type=float, default=1.0)
     ap.add_argument("--time-budget", type=float, default=None, help="bench only: stop after this many seconds; re-run to continue")
-    ap.add_argument("--lr-mqar", type=float, default=None, help="override the recall-task learning rate for this invocation")
     ap.add_argument("--lr-lm", type=float, default=None, help="override the language-model learning rate for this invocation")
     ap.add_argument("--r", type=float, default=None, help="override the relative epsilon r")
-    ap.add_argument("--lrs", default=None, help="lr_arms: comma-separated learning rates")
-    ap.add_argument("--arms", default=None, help="comma-separated arm list (transition, lr_arms)")
-    ap.add_argument("--Ps", default=None, help="transition: comma-separated pair counts")
-    ap.add_argument("--Ds", default=None, help="transition: comma-separated head dimensions")
+    ap.add_argument("--lrs", default=None, help="comma-separated learning rates (lr_scan, lm_small_d_lr)")
+    ap.add_argument("--arms", default=None, help="comma-separated arm list (lm_small_d)")
+    ap.add_argument("--Ds", default=None, help="comma-separated head dimensions (calibrate, lm_small_d, lm_small_d_lr)")
+    ap.add_argument("--seeds", type=int, default=None, help="number of paired seeds (seedvar, lm_small_d)")
     ap.add_argument("--fresh", action="store_true", help="bench only: ignore cached measurements")
     a = ap.parse_args()
     if a.stage == "tests":
         import pytest
-        sys.exit(pytest.main(["-q", "tests"]))
+        root = Path(__file__).resolve().parent
+        sys.exit(pytest.main(["-q", str(root / "tests"), str(root / "shelved")]))
     from msa import pilot, full
     if a.stage == "full":
         full.run_full(a.config, workers=a.workers, threads=a.threads or 1, out=a.out, only_status=a.status)
@@ -60,8 +60,6 @@ def main():
     if a.threads:
         kw["threads"] = a.threads
     from msa import train
-    if a.lr_mqar:
-        train.DEFAULTS["mqar"]["lr"] = a.lr_mqar
     if a.lr_lm:
         train.DEFAULTS["lm"]["lr"] = a.lr_lm
     if a.r is not None:
@@ -70,17 +68,18 @@ def main():
         kw["lrs"] = tuple(float(x) for x in a.lrs.split(","))
     if a.arms:
         kw["arms"] = a.arms.split(",")
-    if a.Ps:
-        kw["Ps"] = [int(x) for x in a.Ps.split(",")]
     if a.Ds:
         kw["Ds"] = [int(x) for x in a.Ds.split(",")]
+    if a.seeds:
+        kw["n_seeds"] = a.seeds
     if a.stage == "bench":
         kw.update(time_budget=a.time_budget, fresh=a.fresh)
-    stages = {"env": pilot.stage_env, "gradcheck": pilot.stage_gradcheck, "generator": pilot.stage_generator,
-              "bench": pilot.stage_bench, "calibrate": pilot.stage_calibrate, "transition": pilot.stage_transition,
-              "epsilon": pilot.stage_epsilon, "lr": pilot.stage_lr, "lr_scan": pilot.stage_lr_scan, "lr_arms": pilot.stage_lr_arms, "transition_ext": pilot.stage_transition_ext, "seedvar": pilot.stage_seedvar,
+    stages = {"env": pilot.stage_env, "gradcheck": pilot.stage_gradcheck, "bench": pilot.stage_bench,
+              "calibrate": pilot.stage_calibrate, "epsilon": pilot.stage_epsilon, "lr": pilot.stage_lr,
+              "lr_scan": pilot.stage_lr_scan, "seedvar": pilot.stage_seedvar, "lm_small_d_lr": pilot.stage_lm_small_d_lr,
+              "lm_small_d": pilot.stage_lm_small_d,
               "budget": lambda **k: pilot.stage_budget(laptop_factor=a.laptop_factor, **k)}
-    order = ["env", "gradcheck", "generator", "bench", "calibrate", "transition", "lr", "epsilon", "lr_scan", "seedvar", "budget"]
+    order = ["env", "gradcheck", "bench", "calibrate", "epsilon", "lr", "lr_scan", "seedvar", "budget"]
     todo = order if a.stage == "pilot" else [a.stage]
     for s in todo:
         t0 = time.time()

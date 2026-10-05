@@ -1,6 +1,15 @@
-"""Full experiment: expands configs/full.json into runs and executes them with resume support.
+"""Full experiment: expands a JSON config into language-model runs and executes them with resume support.
 
     python execute_project.py full --config configs/full.json --workers 2 [--status]
+
+Config format (no config file is shipped yet: the design is still being settled with the user):
+
+    {"settings": {"lr": 3e-3},                         # optional overrides applied to every run (any make_cfg field)
+     "lm": {"seeds": [0, 1, 2, 3, 4],
+            "arms": ["dot_tied", "lp_1", "lp_2", "lp_inf", "dot_untied"],
+            "qk_dims": [2, 4, 16],                     # head sizes (query-key width per head); null/absent = d_model / n_heads
+            "overrides": {},                           # optional per-block overrides
+            "uniform": {"seeds": [0, 1, 2, 3, 4]}}}    # optional: the uniform-attention control (independent of head size)
 
 Re-issuing the command continues an interrupted job: finished runs are skipped, and a run that was
 interrupted mid-training resumes from its last checkpoint (bit-exact). Final weights of every run are in
@@ -10,6 +19,7 @@ import json
 from pathlib import Path
 
 from . import runner, train
+from .arms import NULL_ARM
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -17,18 +27,17 @@ ROOT = Path(__file__).resolve().parent.parent
 def expand(conf):
     s = conf.get("settings", {})
     cfgs = []
-    m = conf.get("mqar")
-    if m:
-        for cell in m["cells"]:
-            for seed in m["seeds"]:
-                for arm in m["arms"]:
-                    cfgs.append(train.make_cfg("mqar", arm, seed=seed, P=cell["P"], D=cell["D"], steps=m.get("steps", 3000),
-                                               diag_every=m.get("diag_every", 1000), **s, **m.get("overrides", {})))
     l = conf.get("lm")
     if l:
-        for seed in l["seeds"]:
-            for arm in l["arms"]:
-                cfgs.append(train.make_cfg("lm", arm, seed=seed, **{**s, **l.get("overrides", {})}))
+        over = {**s, **l.get("overrides", {})}
+        for qk in l.get("qk_dims") or [None]:
+            for seed in l["seeds"]:
+                for arm in l["arms"]:
+                    cfgs.append(train.make_cfg("lm", arm, seed=seed, **({"qk_dim": qk} if qk else {}), **over))
+        u = l.get("uniform")
+        if u:
+            for seed in u["seeds"]:
+                cfgs.append(train.make_cfg("lm", NULL_ARM, seed=seed, **over))
     return cfgs
 
 

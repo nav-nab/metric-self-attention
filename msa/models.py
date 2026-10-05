@@ -1,4 +1,4 @@
-"""Models for both tasks (MQAR variant A, character-level LM) and the score module.
+"""Character-level language model and the score module (shared by every task, including the shelved MQAR task).
 
 Score module (`Scorer`):
   distance arms : logit = -beta_h * c * dist_p(z_q, z_k)       (dist from lp.py, eps relative)
@@ -42,6 +42,8 @@ class Scorer(nn.Module):
         self.grad_stats = None
 
     def raw(self, zq, zk, causal=False):
+        if self.kind == "null":
+            return zq.new_zeros(zq.shape[:-1] + (zk.shape[-2],))
         if self.kind == "dot":
             return zq @ zk.transpose(-1, -2)
         return lp.lp_dist(zq, zk, self.p, float(self.eps), self.impl, self.chunk, causal)
@@ -55,6 +57,10 @@ class Scorer(nn.Module):
     # ---- statistics for calibration (raw scores, c = 1, no epsilon) ----
     @torch.no_grad()
     def record_raw(self, zq, zk, allowed, min_keys):
+        if self.kind == "null":      # constant score: nothing to calibrate
+            H = zq.shape[1]
+            self.calib_out = {"std_sum": 1.0, "std_count": 1, "std_per_head_sum": [1.0] * H, "std_per_head_count": 1}
+            return
         if self.kind == "dot":
             raw = zq @ zk.transpose(-1, -2)
             S = None
@@ -129,14 +135,16 @@ def scores_to_att(logits, allowed):
 
 # ============================================================================ char LM
 class CausalSelfAttention(nn.Module):
-    def __init__(self, arm, d_model, n_heads, T, impl="auto", chunk=16):
+    def __init__(self, arm, d_model, n_heads, T, impl="auto", chunk=16, qk_dim=None):
         super().__init__()
-        self.H, self.D = n_heads, d_model // n_heads
+        # Dv: value width per head (always d_model / H). D: query-key width per head (qk_dim, default = Dv).
+        self.H, self.Dv = n_heads, d_model // n_heads
+        self.D = qk_dim or self.Dv
         kind, p, tied = parse_arm(arm)
         self.tied = tied
-        self.W_q = nn.Linear(d_model, d_model, bias=False)
+        self.W_q = nn.Linear(d_model, n_heads * self.D, bias=False)
         if not tied:
-            self.W_k = nn.Linear(d_model, d_model, bias=False)
+            self.W_k = nn.Linear(d_model, n_heads * self.D, bias=False)
         self.W_v = nn.Linear(d_model, d_model, bias=False)
         self.W_o = nn.Linear(d_model, d_model, bias=False)
         self.scorer = Scorer(arm, n_heads, impl, chunk)
@@ -145,10 +153,10 @@ class CausalSelfAttention(nn.Module):
 
     def forward(self, x):
         B, T, C = x.shape
-        H, D = self.H, self.D
+        H, D, Dv = self.H, self.D, self.Dv
         q = self.W_q(x).view(B, T, H, D).transpose(1, 2)
         k = q if self.tied else self.W_k(x).view(B, T, H, D).transpose(1, 2)
-        v = self.W_v(x).view(B, T, H, D).transpose(1, 2)
+        v = self.W_v(x).view(B, T, H, Dv).transpose(1, 2)
         allowed = self.allowed[:T, :T]
         sc = self.scorer
         if sc.calib:
@@ -164,10 +172,10 @@ class CausalSelfAttention(nn.Module):
 
 
 class Block(nn.Module):
-    def __init__(self, arm, d_model, n_heads, T, mlp_mult, impl, chunk):
+    def __init__(self, arm, d_model, n_heads, T, mlp_mult, impl, chunk, qk_dim=None):
         super().__init__()
         self.ln1 = nn.LayerNorm(d_model)
-        self.attn = CausalSelfAttention(arm, d_model, n_heads, T, impl, chunk)
+        self.attn = CausalSelfAttention(arm, d_model, n_heads, T, impl, chunk, qk_dim)
         self.ln2 = nn.LayerNorm(d_model)
         self.fc1 = nn.Linear(d_model, mlp_mult * d_model)
         self.fc2 = nn.Linear(mlp_mult * d_model, d_model)
@@ -181,12 +189,12 @@ class Block(nn.Module):
 class CharLM(nn.Module):
     task = "lm"
 
-    def __init__(self, arm, vocab, d_model=64, n_layers=2, n_heads=4, T=64, mlp_mult=4, impl="auto", chunk=16):
+    def __init__(self, arm, vocab, d_model=64, n_layers=2, n_heads=4, T=64, mlp_mult=4, impl="auto", chunk=16, qk_dim=None):
         super().__init__()
         self.arm, self.T, self.n_layers = arm, T, n_layers
         self.tok_emb = nn.Embedding(vocab, d_model)
         self.pos_emb = nn.Embedding(T, d_model)
-        self.blocks = nn.ModuleList([Block(arm, d_model, n_heads, T, mlp_mult, impl, chunk) for _ in range(n_layers)])
+        self.blocks = nn.ModuleList([Block(arm, d_model, n_heads, T, mlp_mult, impl, chunk, qk_dim) for _ in range(n_layers)])
         self.ln_f = nn.LayerNorm(d_model)
 
     def scorers(self):
@@ -200,62 +208,16 @@ class CharLM(nn.Module):
         return self.ln_f(x) @ self.tok_emb.weight.t()
 
 
-# ============================================================================ MQAR
-class MQARModel(nn.Module):
-    """One attention layer, one head of dimension D, no MLP. Queries attend only to the P context tokens."""
-    task = "mqar"
-
-    def __init__(self, arm, n_keys=256, n_vals=64, d_model=64, D=16, impl="auto", chunk=16):
-        super().__init__()
-        kind, p, tied = parse_arm(arm)
-        self.arm, self.tied, self.n_vals, self.D = arm, tied, n_vals, D
-        self.key_emb = nn.Embedding(n_keys, d_model)
-        self.val_emb = nn.Embedding(n_vals + 1, d_model)     # last row = blank value
-        self.ln_in = nn.LayerNorm(d_model)
-        self.W_q = nn.Linear(d_model, D, bias=False)
-        if not tied:
-            self.W_k = nn.Linear(d_model, D, bias=False)
-        self.W_v = nn.Linear(d_model, d_model, bias=False)
-        self.W_o = nn.Linear(d_model, d_model, bias=False)
-        self.ln_out = nn.LayerNorm(d_model)
-        self.head = nn.Linear(d_model, n_vals)
-        self.scorer = Scorer(arm, 1, impl, chunk)
-        self.min_keys = 1
-
-    def scorers(self):
-        return [self.scorer]
-
-    def forward(self, ctx, qry, ablate_context=False, return_att=False):
-        xc = self.key_emb(ctx[..., 0]) + self.val_emb(ctx[..., 1])               # B,P,d
-        xq = self.key_emb(qry) + self.val_emb.weight[self.n_vals]                 # B,Q,d
-        uc, uq = self.ln_in(xc), self.ln_in(xq)
-        zq = self.W_q(uq).unsqueeze(1)                                            # B,1,Q,D
-        zk = (self.W_q(uc) if self.tied else self.W_k(uc)).unsqueeze(1)           # B,1,P,D
-        sc = self.scorer
-        allowed = torch.ones(zq.shape[-2], zk.shape[-2], dtype=torch.bool)
-        if sc.calib:
-            sc.record_raw(zq, zk, allowed, self.min_keys)
-        if sc.collect_grad:
-            sc.hook_grad(zq)
-        logits = sc(zq, zk, causal=False)
-        att = torch.softmax(logits, dim=-1)
-        if sc.collect:
-            sc.record_stats(logits, att, zq, zk, allowed)
-        if ablate_context:
-            a = torch.zeros_like(xq)
-        else:
-            a = att[:, 0] @ self.W_v(uc)                                          # B,Q,d
-        out = self.head(self.ln_out(xq + self.W_o(a)))
-        if return_att:
-            return out, att[:, 0], logits[:, 0], zk[:, 0]
-        return out
-
-
 # ============================================================================ init
-def init_model(model, seed):
+# Embedding scales: the language model uses N(0, 0.02^2); other tasks pass their own mapping (parameter-name substring -> std).
+LM_EMB_STD = {"tok_emb": 0.02, "pos_emb": 0.02}
+
+
+def init_model(model, seed, emb_std=None):
     """Per-parameter-name seeded initialisation: a parameter that exists in two arms gets the same
     initial values in both (paired design). Untied W_k is an extra independent draw."""
     import zlib
+    emb_std = LM_EMB_STD if emb_std is None else emb_std
     n_layers = getattr(model, "n_layers", 1)
     for name, p in model.named_parameters():
         g = torch.Generator().manual_seed((seed * 1_000_003 + zlib.crc32(name.encode())) % (2 ** 63))
@@ -267,10 +229,9 @@ def init_model(model, seed):
                     p.fill_(1.0)
                 else:
                     p.zero_()
-            elif "tok_emb" in name or "pos_emb" in name:
-                p.copy_(torch.randn(p.shape, generator=g) * 0.02)
-            elif "key_emb" in name or "val_emb" in name:
-                p.copy_(torch.randn(p.shape, generator=g))
+            elif any(k in name for k in emb_std):
+                std_e = next(v for k, v in emb_std.items() if k in name)
+                p.copy_(torch.randn(p.shape, generator=g) * std_e)
             else:
                 fan_in = p.shape[1]
                 std = 1.0 / math.sqrt(fan_in)

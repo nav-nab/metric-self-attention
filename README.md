@@ -5,9 +5,13 @@ transformer can learn? Queries and keys are tied (W_Q = W_K) in every arm, and t
 `-beta * c_p * ||q - k||_p` for p in {1, 1.5, 2, 3, 4, 8, infinity}. Controls: tied dot product (the crossed-design
 control) and an untied dot product (the standard transformer, a reference arm outside the crossed design).
 
-Two tasks:
-* **MQAR variant A** (synthetic multi-query associative recall, one layer, one head, no MLP, no positions).
-* **Character-level language model** on Tiny Shakespeare (2 layers, d_model 64, 4 heads of dimension 16).
+The main experiment is a **character-level language model** on Tiny Shakespeare (2 layers, d_model 64, 4 heads, context 64).
+The project studies how the head size D (the query-key dimension per head) interacts with the choice of p. Only the query-key
+width is shrunk, and the value width stays at 16 per head. A uniform-attention control (every allowed key gets the same weight)
+shows how much attention can move the result at all. See `docs/project_specification.md`.
+
+The synthetic recall task (MQAR) is **shelved**: its code, design record and pilot findings are in `shelved/mqar/`. It may come back
+after the full language-model results have been seen.
 
 The design decisions live in the project guide kept with the research notes (not in this repository).
 This repository contains the code, the pilot, and the scripts for the full runs.
@@ -17,13 +21,14 @@ This repository contains the code, the pilot, and the scripts for the full runs.
 ```bash
 python3.11 -m venv .venv && source .venv/bin/activate        # Python 3.10-3.12
 pip install -r requirements.txt                               # torch 2.2.2 (last macOS Intel wheels), numpy<2
-python execute_project.py env                                 # environment check + smoke training step
-python execute_project.py pilot                               # the whole pilot, stage by stage (results/pilot/*.json)
+python execute_project.py env                                 # environment check + smoke training steps
+python execute_project.py pilot                               # the language-model pilot checks, stage by stage (results/pilot/*.json)
 python execute_project.py full --config configs/full.json --workers 2     # full experiment, resumable
-python execute_project.py tests                               # unit tests
+python execute_project.py tests                               # unit tests (main and shelved)
+python shelved/mqar/execute_mqar.py -h                        # the shelved recall task
 ```
 
-Everything (benchmarks, checks, calibration, pilot, full runs) is reachable from `execute_project.py`.
+Everything for the language model (benchmarks, checks, calibration, pilot, small-head runs, full runs) is reachable from `execute_project.py`.
 Run `python execute_project.py -h` for the list of stages. Stages that train many models take `--workers N`
 (parallel processes, one thread each by default; on a 2-core machine two single-thread processes gave about
 30% more throughput than one two-thread process).
@@ -38,17 +43,20 @@ calibration constants). `final.pt` is saved for every run, including pilot runs.
 ## Layout
 
 ```
-execute_project.py      single entry point
+execute_project.py      single entry point (language model)
+conftest.py             puts the repository root on sys.path for the tests
 msa/lp.py               L^p distance kernel (naive / checkpointed / custom autograd / matmul for p=2, causal-block skipping)
 msa/gradcheck.py        float64 gradient checks against naive autograd
-msa/mqar_gen.py         MQAR variant A generator (vectorised + reference) and checks
-msa/models.py           score module (beta, calibrated c, relative epsilon), MQAR model, character LM, shared-init rule
+msa/arms.py             arm names and parsing (nine arms plus the uniform control)
+msa/models.py           score module (beta, calibrated c, relative epsilon), character LM with a settable query-key dimension, shared-init rule
 msa/calibration.py      empirical calibration of c and epsilon (diagonal masked)
-msa/train.py            training loop, checkpointing, diagnostics, final weights
-msa/evaluate.py         accuracy/bpc and attention diagnostics (entropy, margins, hub measure, ...)
+msa/train.py            task-agnostic training engine (Task plug-ins), the language-model task, checkpointing, diagnostics, final weights
+msa/evaluate.py         bpc and attention diagnostics (entropy, margins, ...)
 msa/bench.py            timing and memory (one subprocess per measurement)
-msa/pilot.py            pilot stages;  msa/full.py  full-run manifest
+msa/pilot.py            pilot stages;  msa/full.py  full-run manifest;  msa/runner.py  parallel run driver
 tests/                  pytest tests
+shelved/mqar/           the shelved recall task: README, DESIGN, PILOT_FINDINGS, code, its own entry point and tests
+docs/                   specification (current and original), pilot report (a snapshot), implementation notes
 data/tinyshakespeare.txt
-results/pilot/          pilot outputs
+results/pilot/          pilot outputs (including the original MQAR pilot outputs)
 ```
