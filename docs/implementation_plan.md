@@ -36,11 +36,11 @@ One command runs everything, and each stage can also be run alone.
 | `check` | Runs the unit tests. |
 | `smoke` | Runs every stage on a tiny scale (a few steps, two cells). **Requirement**: needs the user's agreement before it is run. |
 | `calibrate` | Measures and saves the constants of section 6 of the details. |
-| `scan` | Stage 1 of the learning-rate protocol: 141 runs. |
-| `select` | Chooses the rate of each cell and lists the cells that need an extra rate. |
+| `scan` | Stage 1 of the learning-rate protocol: 141 runs, then one extra run for each cell whose best rate is at an end of the grid. |
+| `select` | Reads the scan results, chooses the rate of each cell and lists any cell that still needs an extra rate. |
 | `main` | Stage 2: 235 runs at the chosen rates. |
 | `analyze` | Reads the results, writes the tables and the figures. |
-| `all` | Runs the stages in order, including any extra scan runs. |
+| `all` | Runs calibrate, scan (with its extra runs), select, main and analyze in this order. It does not run `check` or `smoke`. |
 
 The stages depend on each other only through files. `select` reads the scan results, and `main` reads the selected rates. The script holds no other state, so any stage can be restarted.
 
@@ -158,3 +158,12 @@ Each item records a choice that the documents leave open, or a detail of the cod
 14. **Checkpoint.** It holds the model, the optimiser, the next step, the loss history, the log rows, the diagnostics, the elapsed time and the torch random-number state. The training uses no random numbers beyond the seeded batches, so the state is kept only as the plan requires. A checkpoint of a different run (different arm, head size, seed, rate or length) is refused. A run that ends or fails before its first checkpoint restarts at step 0, as section 4 says.
 15. **Numbers.** The final training loss is the mean over the last 100 steps. The rate rises linearly over the first 200 steps and reaches 10 percent of the peak exactly at the last step. The weight decay of 0.01 applies to the weight matrices of the linear layers (five per layer, six in the untied arms). The result of the uniform arm records the head size as `null`.
 16. **Interruption tests.** One test stops a run with an exception after step 13 with a fake clock, so that the last checkpoint is at step 10. It resumes the run and compares the weights, the log and the final bpc with an uninterrupted run, for three arms. A second test kills a real process with SIGKILL while it writes a checkpoint at every step. It then resumes the run and compares the final bpc with an uninterrupted run. Both agree to better than 1e-6.
+
+**Step 4 (the sweep stages and the smoke command).**
+
+17. **Extra scan runs. User.** The `scan` stage runs the extra-rate runs itself, because design section 8 counts them as part of stage 1. The `select` stage only reads files. If an extra run is still missing, `select` lists it and exits with an error.
+18. **Rate selection.** A rate that diverged is never chosen. The best rate of the base grid is the lowest bpc among the rates that did not diverge. If it is the lowest or the highest rate of the grid, the cell gets the extra rate 1e-3 or 9e-2. The chosen rate is the best over all rates that did not diverge, including the extra one. Ties go to the lower rate. A cell that diverged at every rate has no rate, and `select` reports it and blocks `main`. The results are written to `selected_rates.json` and `scan_table.csv`.
+19. **Workers.** The runs are started in a pool of four spawned processes with one thread each. The workers ignore Ctrl-C, and the parent stops them and prints how to resume. A run that raises an error writes `error.txt` in its folder, and the other runs go on. The stage then ends with an error that lists the failed runs. Starting the stage again retries them, because they have no `result.json`.
+20. **Order of the runs.** The slowest runs go first. The order uses a fixed table of rough relative costs per arm, scaled by the head size for the distance arms. The table is only a guess. It is used for the order and for the time estimate in the progress line.
+21. **The smoke command.** It uses two cells, the L^8 arm at D = 2 and the tied dot product at D = 4. It runs the calibration with two batches, the scan with its extra runs, the selection and the main stage with two seeds, all at 20 steps with a warm-up of 4 steps. The results go to `results/smoke/`, which is ignored by git. The smoke command has not been run. The analysis will be added to it with step 6, on invented results.
+22. **Tests of the stages.** They check the counts of 47 cells, 141 scan runs and 235 main runs, and the rate rule on a table of cases. One test runs all stages on three cells at 6 steps with two worker processes. It checks that a second call starts nothing and that a removed result is the only one that is run again. A last test checks that a failing run is reported and that the others finish.

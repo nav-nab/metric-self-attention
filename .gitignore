@@ -9,3 +9,5 @@ shelved/**/final.pt
 **/results/**/*.tmp
 .DS_Store
 _sync/
+# the smoke run writes into results/smoke/ and is never committed
+results/smoke/
