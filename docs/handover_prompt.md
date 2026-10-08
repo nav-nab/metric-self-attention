@@ -32,6 +32,8 @@ If a memory note and a repository document disagree, the document is current.
 ## Facts to keep in mind
 
 - No run diverged. The rate scan chose 3e-3 in 46 of 47 cells and 1e-2 for the uniform control, so per-arm rate tuning is weak.
+- The user has decided that no finer learning-rate scan is made. All conclusions rest on the existing run.
+- The final weights are committed. The rest of results/ is untracked.
 - The median seed sd is about 0.0096 bpc.
 - Test 6 (equivalence) is not coded. Its margin is deferred and is needed only if an equivalence claim is made.
 - The write-up must make the statements listed in design_details section 10, including that the baseline is non-standard because of the diagonal mask and that rates were tuned per arm on the reporting set.
