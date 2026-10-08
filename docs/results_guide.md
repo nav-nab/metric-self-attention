@@ -52,7 +52,7 @@ The run was interrupted at least once. Six scan runs and nine main runs were res
 
 The rate 3e-3 beat 1e-3 by 0.063 to 0.141 bpc, with a median of 0.093. It beat 1e-2 by 0.003 to 0.087 bpc, with a median of 0.036. In five cells the margin over 1e-2 was below 0.01 bpc, which is about the seed noise. The full scan table is `results/scan_table.csv`.
 
-**Seed noise.** The standard deviation of the final bpc over the five seeds of a cell has a minimum of 0.0034, a median of 0.0096 and a maximum of 0.0267. The design expected about 0.01. The values per cell are in `cell_means.csv`.
+**Seed noise.** The standard deviation of the final bpc over the five seeds of a cell has a minimum of 0.0034, a median of 0.0096 and a maximum of 0.0267. The values per cell are in `cell_means.csv`.
 
 ## 3. Checks of the run that were already made
 
@@ -129,10 +129,9 @@ These points come from the design and from the run. Each can affect how a result
 4. **The epsilon is far below the float32 resolution of the typical sum.** It acts only for near-exact matches. The floors that the design lists (about 3 percent at p = 8) hold for the distance at an exact match and not for typical pairs.
 5. **The baseline is non-standard in two ways.** The diagonal is masked, and the query and key matrices are tied. The arm `dot_untied_unmasked` at D = 16 measures the effect of the mask together with the untying. The arm `dot_untied` measures the effect of tying.
 6. **At D = 2 the arms p = 1 and p = infinity have the same expressive power.** Any difference between them at D = 2 reflects optimisation.
-7. **The outline's statement that the model underfits comes from version 1.** The final training loss in `result.json` is in nats, and the validation bpc is in bits. For example, the cell `dot_tied_D2` seed 1 has a training loss of 1.428 nats, which is 2.060 bits, and a validation bpc of 2.352. The gap between the two is about 0.3 bits. The analysing agent should check the statement against all cells before it is repeated.
-8. **The outline's noise level of about 0.01 bpc came from version 1.** The design says it will be re-measured. The measured values are in section 2 of this document.
-9. **Five seeds give wide intervals.** The smallest detectable difference is about 0.02 bpc without a correction, and about 0.03 to 0.05 bpc with the Holm correction. The single-seed values are in the tables and should be shown with every summary.
-10. **The uniform control is a descriptive scale only.** It is not entered into any test. The two untied arms are not part of test 1, 3, 4 or 5.
+7. **The design makes no claim about underfitting.** The final training loss in `result.json` is in nats, and the validation bpc is in bits. For example, the cell `dot_tied_D2` seed 1 has a training loss of 1.428 nats, which is 2.060 bits, and a validation bpc of 2.352. The gap between the two is about 0.3 bits. If the write-up says anything about fit, it must check all cells first.
+8. **Five seeds give wide intervals.** The smallest detectable difference is about 0.02 bpc without a correction, and about 0.03 to 0.05 bpc with the Holm correction. The single-seed values are in the tables and should be shown with every summary.
+9. **The uniform control is a descriptive scale only.** It is not entered into any test. The two untied arms are not part of test 1, 3, 4 or 5.
 11. **The scan runs are not a sixth seed.** They use the seed 100 and they were part of the selection of the rates. They must not be pooled with the main results.
 
 ## 7. What the write-up must state

@@ -152,7 +152,7 @@ When $x = y$ the distance is zero and the factor $d_p^{1-p}$ is infinite. The pr
 
 ## 8. The learning-rate protocol
 
-The earlier work found that the best learning rate can depend on the head size and on the arm. The dot-product arm needed a far higher rate at small D, and a shared low rate gave the false impression that distance was better. A shared rate can therefore manufacture a difference between arms. The protocol tunes the rate for every cell, in two stages.
+The best learning rate can depend on the head size and on the arm. A shared rate can therefore manufacture a difference between arms. The protocol tunes the rate for every cell, in two stages.
 
 ![The learning-rate protocol](figures/fig5_protocol.png)
 
@@ -162,7 +162,7 @@ The earlier work found that the best learning rate can depend on the head size a
 
 **Properties.**
 - The protocol is fixed in advance. The scan is part of the experiment, and its results are reported.
-- One seed has noise of about 0.01 bpc. Where two neighbouring rates differ by less than that, the choice is arbitrary but harmless, because the loss is flat there.
+- Where two neighbouring rates differ by less than the seed noise, the choice is arbitrary but harmless, because the loss is flat there.
 - The cost is about 8 hours for the scan and about 14 hours for the main runs on the laptop. The total is about 23 to 24 hours with the extra arms. These are estimates with an uncertainty of 30 to 40 percent.
 
 **What the write-up must say.** The rate of each arm was tuned, so the arms differ in more than the score function. The rate was chosen on the validation set that the results are reported on. The chosen rates and the full scan table go in the write-up.
@@ -190,12 +190,12 @@ A negative gap means that the distance arm is better. The outline's hypothesis p
 - In test 1, D and p enter as categorical factors. The interaction then has $4 \times 6 = 24$ degrees of freedom in the numerator.
 - In test 3, each arm has one slope per seed, so each t-test uses five slopes and four degrees of freedom.
 - In test 5, five seeds allow only 126 distinct resamples, so the probabilities are coarse. They are reported as rough guides.
-- Test 6 is run only if the write-up claims that two arms are equivalent. The margin $\delta$ is chosen then, after the noise has been re-measured.
+- Test 6 is run only if the write-up claims that two arms are equivalent. The margin $\delta$ is chosen then, from the measured noise.
 - Gaps outside the Holm family, such as the gap of the untied to the tied dot product, are given as uncorrected intervals and are labelled as such.
 - The uniform control and the two untied arms are not entered into any test. The write-up reports the uniform control's bpc beside the other arms as a qualitative scale.
 - The write-up reports each seed's paired difference next to every summary.
 
-**Caveats.** There are only five seeds. The mixed model assumes approximately normal residuals. The spread of bpc may differ across D. The noise level of about 0.01 bpc comes from the earlier version, at a different length, and will be re-measured in the main runs. With that noise and five seeds, a difference smaller than roughly 0.02 bpc cannot be detected. The outline's limitations section gives the figure.
+**Caveats.** There are only five seeds. The mixed model assumes approximately normal residuals. The spread of bpc may differ across D. The noise level is measured in the main runs.
 
 ## 10. What the write-up must state
 
@@ -206,7 +206,7 @@ Each item restates a decision above.
 - The learning rate was tuned for each arm and each head size, and it was chosen on the validation set that the results are reported on (section 8).
 - The untied arm has one extra projection matrix per head (section 4).
 - The L^p distances with p other than 2 depend on the coordinate axes. This is accepted and flagged (section 4).
-- The conclusions rest on learned absolute position embeddings. Section 7 of the outline lists a relative-position run as a possible later check.
+- The conclusions rest on learned absolute position embeddings. Section 6 of the outline lists a relative-position run as a possible later check.
 - Any arm that diverges is reported as a finding about that metric and is not hidden.
 
 ## 11. History of the design
@@ -215,7 +215,7 @@ These paragraphs record earlier decisions that shaped the present design. The fi
 
 **Head-size grid.** The grid of head sizes is D = 2, 4, 8, 12 and 16. The user added D = 8 and D = 12 to the earlier first round of D = 2 and 4 beside the default D = 16. D = 1 is skipped, because all L^p arms coincide there.
 
-**Shelving of the recall task.** The user shelved the recall task (MQAR) because the distance arms sit at its accuracy ceiling and the dot-product result depends on the learning rate, and because further pilots on it would not end. The code, the design decisions and the pilot findings were moved into `shelved/pilot_v1/mqar/`, with its own entry point and tests. The main engine was made task-agnostic so that the task plugs in. The language model is run by itself first. The full results then decide whether the recall task is needed.
+**Shelving of the recall task.** The user shelved the recall task (MQAR). The language model is run by itself first. The full results then decide whether the recall task is needed.
 
 **Restart from scratch.** The user shelved all of the version 1 code, including the language-model code, the pilot report and the pilot results, in `shelved/pilot_v1/`. The project is being rebuilt from scratch against the outline and these details. Two implementation choices of version 1 had not been approved by the user, namely r = 10^-12 and the direct p = 2 kernel. The user approved both on the same day. The grid of nine arms was confirmed on that day too.
 

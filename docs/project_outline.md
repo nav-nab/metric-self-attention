@@ -52,38 +52,25 @@ Three geometric facts motivate the design. They are reasoning, not results.
 
 **Varying D.** Only the query-key dimension of each head is shrunk. The value width stays at 16 per head, so the rest of the model is unchanged. The grid is D = 2, 4, 8, 12 and 16, where D = 16 is the default head size of the model (width 64 divided by 4 heads). D = 1 is skipped, because all L^p arms coincide there.
 
-**The recall task is shelved.** A synthetic recall task (MQAR) was considered as a controlled setting where head size and context size interact. It is shelved as of 2026-10-05. Its code, design decisions and pilot findings are in `shelved/pilot_v1/mqar/`. The language model is run by itself first, and the full results decide whether the recall task is needed.
+**The recall task is shelved.** A synthetic recall task (MQAR) was considered as a controlled setting where head size and context size interact. It is shelved as of 2026-10-05. The language model is run by itself first, and the full results decide whether the recall task is needed.
 
 **Fairness safeguards.**
 - **Pairing.** Every arm with the same seed (the number that fixes randomness) sees the same data and starts from the same shared parameters, so differences are paired.
 - **Replication.** Five seeds per cell.
-- **Learning rate.** The best learning rate may depend on D and on the arm, and this is a real risk. In the earlier work, the dot arm needed a far higher rate at small D, and a shared low rate gave the false impression that distance was better. Each arm therefore gets its own rate at each D, chosen by a scan on a fixed grid. The protocol is described in `design_details.md`, section 8.
+- **Learning rate.** The best learning rate may depend on D and on the arm, and this is a real risk. A shared rate could manufacture a difference between arms. Each arm therefore gets its own rate at each D, chosen by a scan on a fixed grid. The protocol is described in `design_details.md`, section 8.
 
 **Training length.** Each run takes 4,000 optimiser steps.
 
 **The outcome.** Validation bpc for each (D, arm) cell. The analysis looks at the whole surface: how the gap to the dot product changes with D, and how the ranking of p changes with D. The statistical analysis treats the seeds as blocks. Its two main questions are whether the effect of p depends on D, and how the gap between each L^p arm and the tied dot product changes with D. Secondary analyses report the gap in each cell, the shape of the effect of p, and how often each p is best. The full plan is in `design_details.md`, section 9.
 
-## 5. Relevant results from the pilot
-
-These come from version 1 of the project, which is shelved in `shelved/pilot_v1/`. Each finding is listed there, with its caveats and its relevance to this project, in `shelved/pilot_v1/PILOT_FINDINGS.md`. The full report is `shelved/pilot_v1/docs/pilot_report.md`. Every pilot run used head size 16, and no pilot number describes a small head.
-
-- At head dimension 16, the language-model arms are within seed noise of each other. Tied dot and L2 are indistinguishable, and p = infinity is slightly worse. This is why the project now turns to small heads.
-- Background (recall task, now shelved): on the recall task, small head dimension is where the dot product breaks down while the distance arms do not. At larger D every arm solves the task. The distance arms are all near perfect, so the recall task cannot rank the values of p.
-- At an adequate learning rate, convergence speed among the L^p arms shows no clear ordering. There is a weak hint that mid values of p learn faster early and that p = 1 and p = infinity learn slower. It rests on one seed.
-- Learning rate matters. The dot arm is more sensitive to it at small D than the distance arms.
-- The seed-to-seed spread of validation bpc is about 0.01, and the smallest difference detectable with five seeds is about 0.02 (finding 7 in the pilot findings).
-- The language model underfits: training loss is well above what a model of this kind could reach. So these experiments probe a regime limited by capacity as much as by attention.
-
-## 6. Limitations
+## 5. Limitations
 
 - Heads of dimension 2 or 4 are far smaller than anyone uses in practice. The point is to find where the metrics differ. If a distance head works at tiny D, one practical angle is a smaller key cache at inference time, to be raised only if the data support it.
-- The model is small and underfit, so an effect of the score may be hidden by other limits.
 - Non-L2 metrics depend on the coordinate axes. This is accepted and flagged.
-- Seed noise is about 0.01 bpc, so only differences above roughly 0.02 are detectable with five seeds. This figure comes from an earlier version at 2,500 steps and D = 16, and it will be re-measured.
 - Each arm's learning rate is chosen on the same validation set that the results are reported on. The selection uses a different seed from the final seeds, and every arm gets the same treatment, so the bias is expected to be small. It is not zero.
 - The tie and the diagonal mask apply to most arms and may shape results more than the score does.
 
-## 7. Possible future directions
+## 6. Possible future directions
 
 These are not part of the planned experiment. They are recorded so that they can be picked up later, and none has been designed or costed in detail.
 

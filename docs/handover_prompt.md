@@ -33,7 +33,6 @@ If a memory note and a repository document disagree, the document is current.
 
 - No run diverged. The rate scan chose 3e-3 in 46 of 47 cells and 1e-2 for the uniform control, so per-arm rate tuning is weak.
 - The median seed sd is about 0.0096 bpc.
-- The outline's statements that the model underfits and that the noise is about 0.01 come from version 1. Re-check them against these results.
 - Test 6 (equivalence) is not coded. Its margin is deferred and is needed only if an equivalence claim is made.
 - The write-up must make the statements listed in design_details section 10, including that the baseline is non-standard because of the diagonal mask and that rates were tuned per arm on the reporting set.
 
