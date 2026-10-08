@@ -1,6 +1,6 @@
 # Metric self-attention: implementation plan
 
-This is the third document. It follows `project_outline.md` and `design_details.md`, which fix what is run. This document fixes how the code is organised. It is the brief for the agent that writes the code. The code is being written, and no experiment is run until the user agrees.
+This is the third document. It follows `project_outline.md` and `design_details.md`, which fix what is run. This document fixes how the code is organised. It was the brief for the agent that wrote the code. The code is written and tested, and the full experiment has been run. Section 14 records the run. `results_guide.md` describes the results.
 
 Items marked **Requirement** were requested by the user. Items marked **Approved** were proposed by Claude and approved by the user on 2026-10-05. Section 11 lists details that the documents leave to the implementing agent, together with the rules for working on this project.
 
@@ -159,7 +159,7 @@ The unit tests check the following.
 
 ## 12. Items that still need the user
 
-- The start of the long run, which the user makes with `python execute_project.py all`. The smoke run of step 5 passed on the laptop.
+- Nothing is open for the code. The long run has finished. The remaining items are the interpretation of the results and the write-up, which are described in `results_guide.md`.
 - Review of any choice in section 13 that the agent flags.
 
 ## 13. Coding decisions (filled in by the implementing agent)
@@ -211,3 +211,11 @@ Each item records a choice that the documents leave open, or a detail of the cod
 **Added after the smoke run.**
 
 31. **Status line every minute. User.** The user asked for continual feedback. Each worker writes a small `progress.json` in its run folder at every logged step (every 50 steps), and the file is removed when the run ends. The main process reads these files and prints a status line every 60 seconds. The estimate of the time left uses the cost table of item 20, weighted by the share of each run that is done. Progress files left by an interrupted session are deleted when the stage starts. The stages with only one worker process print a status line only when a run finishes.
+
+## 14. Record of the run
+
+The user ran the smoke test on 2026-10-05, and it passed. The user then started the full run with the code of commit `b4ade25`. The calibration took two minutes. The scan ran from 2026-10-05 to 2026-10-06, and the main stage ran from 2026-10-06 to 2026-10-07. The analysis stage was run once on the real results on 2026-10-07.
+
+The run needed about 49 hours of elapsed time, and about 37 hours of pure compute with four workers. The estimate of the plan was 23 to 24 hours, with the budget at 48 hours. The mean run took 21 minutes. The estimate had assumed about 14 minutes. The distance arms were slower than the plan assumed, and the L^p arms took 16 to 32 minutes per run.
+
+Six scan runs and nine main runs were resumed from a checkpoint after an interruption. No run diverged. The scan chose the rate 3e-3 for 46 cells and 1e-2 for the uniform control. The extra rate 1e-3 was run for 46 cells, and the extra rate 9e-2 was not needed. After the run, the code in the repository had no uncommitted change. The detail is in `results_guide.md`.

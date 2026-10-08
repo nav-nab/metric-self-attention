@@ -1,6 +1,6 @@
 # Metric self-attention: head size and the choice of p
 
-**Status: design settled, implementation starting.** Last updated 2026-10-05. All design issues are settled, and one detail is deferred (an equivalence margin that is needed only if an equivalence claim is made). The project is being rebuilt from scratch against this design. The code is being written against `implementation_plan.md`, and no run exists yet. The earlier version of the project is kept in `shelved/` as a record.
+**Status: the experiment has been run, and the results are being analysed.** Last updated 2026-10-08. All design issues are settled, and one detail is deferred (an equivalence margin that is needed only if an equivalence claim is made). The project was rebuilt from scratch against this design. The code follows `implementation_plan.md`, and the full run has finished. `results_guide.md` describes the results. The sections below are written as they were before the run, and they will be brought up to date with the write-up. The earlier version of the project is kept in `shelved/` as a record.
 
 This is the first of two documents. It gives the question, the background, the motivation and the shape of the experiment. The second, `design_details.md`, gives the settled decisions and the reasoning behind them, and should be read after this one. This outline is written for a reader who has not seen the project. It keeps the pilot results that bear on the central question and leaves out the rest.
 
