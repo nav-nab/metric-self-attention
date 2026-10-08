@@ -21,7 +21,7 @@ The design is settled. The code is written and tested. The full experiment has f
 
 The code that produced the results is the commit `b4ade25` and its predecessors. All 150 unit tests passed on that commit. They were run on Linux with Python 3.10 and torch 2.2.2. The user ran the smoke test and the long run on the laptop, and the user starts every stage. The script never runs git.
 
-The results folder `results/` is not committed to git at the time of writing. It holds about 175 MB, and most of this is the final weights, at about 0.4 MB per run.
+The results folder `results/` holds about 175 MB, and most of this is the final weights, at about 0.4 MB per run. The final weights of the scan and main runs are committed to git. The other files under `results/` (the JSON and CSV files, the calibration and the analysis outputs) are not tracked.
 
 ## 2. Record of the run
 
@@ -123,7 +123,7 @@ The tests are defined in `design_details.md`, section 9. The exact form of test 
 
 These points come from the design and from the run. Each can affect how a result should be read.
 
-1. **The learning rates are almost the same in all cells.** The scan chose 3e-3 for 46 of the 47 cells. The grid has steps of a factor of about 3, and the best rate lies between 1e-3 and 1e-2. The claim that the rate was tuned per arm is therefore weak. Differences between arms may still depend on how far each arm's own optimum is from 3e-3. The scan table shows the bpc at the neighbouring rates. A finer scan around 3e-3 would be a new experiment and needs the decision of the user.
+1. **The learning rates are almost the same in all cells.** The scan chose 3e-3 for 46 of the 47 cells. The grid has steps of a factor of about 3, and the best rate lies between 1e-3 and 1e-2. The claim that the rate was tuned per arm is therefore weak. Differences between arms may still depend on how far each arm's own optimum is from 3e-3. The scan table shows the bpc at the neighbouring rates. The user has decided that no finer scan is made. All conclusions rest on the run that exists.
 2. **The rates were chosen on the validation set that the results are reported on.** The scan used a seed that is not one of the five final seeds. The write-up must say this.
 3. **Calibration matches the spread of the scores at initialisation only.** The learned scale beta and the weights change during training. The dot product depends quadratically on the scale of the query vectors, and a distance depends linearly on it. The diagnostics hold the learned scale, the largest logit, the entropy and the norms of the queries and keys, so that any later drift can be examined.
 4. **The epsilon is far below the float32 resolution of the typical sum.** It acts only for near-exact matches. The floors that the design lists (about 3 percent at p = 8) hold for the distance at an exact match and not for typical pairs.
@@ -158,8 +158,7 @@ These rules come from the user and apply to the analysing agent.
 
 ## 9. Open items
 
-- The results folder is not yet committed. The user decides what to commit. The final weights of the scan runs are about 75 MB and those of the main runs are about 90 MB.
+- The final weights are committed. The rest of `results/` is untracked, and the user decides whether to commit it.
 - The equivalence margin of test 6 is not chosen.
 - Whether the recall task (MQAR) is needed is to be decided after the user has seen the results.
-- Whether a finer learning-rate scan is wanted, given point 1 of section 6.
 - The outline and the design details still describe the experiment in the future tense in places. They should be brought up to date when the write-up is produced.
