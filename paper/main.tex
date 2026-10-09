@@ -127,7 +127,7 @@ d_p(x,y)=\Big(\sum_{m=1}^{D}|x_m-y_m|^p+\varepsilon\Big)^{1/p}\ (p<\infty),\qqua
 Here $\beta_h$ is a learned scale for each head, with initial value $1$ in every arm.
 The constant $c$ is fixed after calibration (Section~\ref{sec:calib}).
 It takes a different value in each arm, and also for each head size and layer.
-The small number $\varepsilon$ keeps the gradient finite at exact matches.
+The small number $\varepsilon$ keeps the gradient finite at exact matches. It is used for $1<p<\infty$ only, and is set to zero at $p=1$.
 It puts a floor under the distance of about 3 percent of the typical distance at $p=8$, and a smaller floor at smaller $p$ (Appendix~\ref{app:math}).
 
 The arms are the tied dot product, which is the control, and seven $\ell^p$ distances with $p\in\{1,1.5,2,3,4,8,\infty\}$.
@@ -316,7 +316,7 @@ Table~\ref{tab:scale} gives the scale of the variation.
 The nine arms at five head sizes occupy a narrow band.
 That band is about a tenth as wide as the distance between the best of these arms and uniform attention.
 Attention therefore has a large effect, and the choice among the crossed arms has a small one.
-The spread between cells is a few times the seed standard deviation.
+The range across cells is about seven times the median seed standard deviation.
 The tied dot product changes little between the smallest and the largest head.
 
 The effect of $p$ is modest and shows no clear shape.
@@ -331,7 +331,7 @@ We report the variation across $p$ descriptively, without formal statistical tes
 Table~\ref{tab:time} gives the wall-clock time of one run.
 The dot-product arms take about the same time at every $D$.
 The $\ell^p$ arms take longer at every $D$, and their time grows with $D$.
-The ratio to the tied dot product also grows with $D$.
+The ratio to the tied dot product also grows with $D$ overall, but not at every step.
 These times come from four runs in parallel on a 2020 laptop.
 They compare a chunked pure-PyTorch distance kernel \citep{paszke2019} with a matrix-multiplication dot product.
 They do not describe the cost of the operations in general.
@@ -436,7 +436,7 @@ We use learned absolute positions, whereas rotary and relative position schemes 
 In a small character-level language model, an $\ell^p$ distance score did not beat the dot product at any head size.
 The tied dot product was better in nearly every cell, and the penalty of the distance was largest at the smallest head size.
 The conjecture that a distance relieves the crowding of a small query-key space was therefore not supported in this setting.
-The untied dot product was better still, and masking the diagonal had no detectable cost.
+The untied dot product was slightly better at every head size, though significant only at $D=8$ without correction, and masking the diagonal had no detectable cost.
 All arms lay much closer to one another than to the control without informative attention scores.
 The distance arms were also slower in our implementation.
 They led early in training and fell behind later.
@@ -726,7 +726,7 @@ Keys that must be told apart by at least a separation $\epsilon$ can then occupy
 The numbers of such keys scale like $\epsilon^{-(D-1)}$ and $\epsilon^{-D}$.
 For $P$ keys, the separation that can be achieved scales like $P^{-1/(D-1)}$ for the dot product and $P^{-1/D}$ for the distance.
 The gap between these two exponents is large at $D=2$ and small at $D=16$.
-Table~\ref{tab:pack} checks this by a greedy random packing.
+Table~\ref{tab:pack} checks this by a greedy random packing. It covers $D=2$ to $4$ only. Each count uses 6,000 random candidate points, so the counts at the finest separations may not be saturated.
 The ratio of the two counts grows as the separation shrinks, and it is smaller at larger $D$.
 The counts come from one random sequence each.
 Ratios below one at coarse separation are sampling noise.
@@ -806,10 +806,10 @@ We measure $c$ on real batches (Appendix~\ref{app:calib}).
 \subsection{Model, data and training}
 
 \begin{itemize}
-\item \textbf{Data.} Tiny Shakespeare \citep{karpathy2015}, 1,115,394 characters, md5 \texttt{6fb458f1232090904f\allowbreak b40fe944165e91}. The split is 90/10. Validation uses the whole validation text in non-overlapping windows of 64.
-\item \textbf{Model.} Decoder-only, pre-norm \citep{ba2016}, two layers, width 64, four heads, MLP width 256 with GELU \citep{hendrycks2016}, context 64, learned absolute positions, tied input and output embeddings. The query, key and value projections have no bias. The tied matrix is stored once, and the untied arm starts with the same matrix as the tied arms.
-\item \textbf{Initialisation.} Projections start with standard deviation $0.02$. The coordinates of $z$ then have a standard deviation of about $0.16$, so the constant of the tied dot product is near $40/\sqrt D$ and not near $1/\sqrt D$.
-\item \textbf{Optimiser.} AdamW \citep{loshchilov2019adamw} with $\beta=(0.9,0.95)$, weight decay $0.01$ on the weight matrices only, and gradient clipping \citep{pascanu2013} at global norm $1.0$.
+\item \textbf{Data.} Tiny Shakespeare \citep{karpathy2015}, 1,115,394 characters, md5 \texttt{6fb458f1232090904f\allowbreak b40fe944165e91}. The split is 90/10. Validation uses non-overlapping windows of 64 characters. There are 1,742 of them, covering 111,488 of the 111,540 validation characters.
+\item \textbf{Model.} Decoder-only, pre-norm \citep{ba2016}, two layers, width 64, four heads, MLP width 256 with GELU \citep{hendrycks2016}, context 64, learned absolute positions, tied input and output embeddings. The query, key and value projections have no bias. There is no dropout. The scale $\beta_h$ is stored as a logarithm, with one value per head and layer. The tied matrix is stored once, and the untied arm starts with the same matrix as the tied arms.
+\item \textbf{Initialisation.} Weight matrices and embeddings start with standard deviation $0.02$, except the attention output projection and the second MLP matrix, which start at $0.01$. Biases start at zero. The coordinates of $z$ then have a standard deviation of about $0.16$, so the constant of the tied dot product is near $40/\sqrt D$ and not near $1/\sqrt D$.
+\item \textbf{Optimiser.} AdamW \citep{loshchilov2019adamw} with $\beta=(0.9,0.95)$, weight decay $0.01$ on the weights of the linear layers only (not on the embeddings, layer norms, biases or the scale $\beta_h$), and gradient clipping \citep{pascanu2013} at global norm $1.0$.
 \item \textbf{Schedule.} Batch of 64 sequences of 64 characters, 4,000 steps. Linear warm-up over 200 steps, then cosine decay \citep{loshchilov2017sgdr} to $10\%$ of the peak rate.
 \item \textbf{Evaluation.} Every 500 steps and at the end. The outcome is the value at step 4,000, not the best value during training.
 \item \textbf{Divergence.} A run counts as diverged if its training loss is non-finite or its final validation bpc exceeds $\log_2 65\approx6.02$. No run met this condition.
@@ -840,7 +840,7 @@ Before the analysis we checked the following.
 \item Each main run used the rate in the selection file, and each selected rate is the lowest-bpc rate of its scan.
 \item All 235 stored final weights reload and reproduce the stored validation bpc to about $10^{-7}$.
 \item The stored calibration constants and epsilons match the calibration files in all 828 layers of the scan and main runs.
-\item The nine resumed main runs are not outliers within their cells (largest deviation 1.5 seed standard deviations).
+\item The nine resumed main runs are not outliers within their cells (largest deviation 1.5 seed standard deviations from the cell mean; with the run left out of the mean, one run at $p=8$, $D=2$ deviates by 3.3, and its gap to the tied dot is the smallest of its five seeds).
 \item Rerunning the analysis stage reproduces all tables exactly, and an independent recomputation of the tables used here agrees with them up to the six-digit rounding of the files.
 \end{itemize}
 
