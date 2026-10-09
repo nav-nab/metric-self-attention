@@ -1,8 +1,8 @@
 # Metric self-attention: results guide
 
-This is the fourth document. Read `project_outline.md`, `design_details.md` and `implementation_plan.md` first. They fix the question, the design and the code. This document describes what the run produced and where to find it. It is the brief for the agent that analyses and discusses the results with the user.
+This is the fourth document. Read `project_outline.md`, `design_details.md` and `implementation_plan.md` first. They fix the question, the design and the code. This document describes what the run produced and where to find it. 
 
-The document states facts about the run and about the files. It does not interpret the results. The interpretation is the task of the analysing agent and the user.
+The document states facts about the run and about the files. It does not interpret the results. The interpretation is in `analysis_findings.md` and in the paper.
 
 **Contents.**
 1. Status of the project
@@ -11,17 +11,14 @@ The document states facts about the run and about the files. It does not interpr
 4. Where the files are and what they contain
 5. How the analysis was defined
 6. Points to keep in mind when interpreting the results
-7. What the write-up must state
-8. Working rules
-9. Open items
 
 ## 1. Status of the project
 
-The design is settled. The code is written and tested. The full experiment has finished on the user's laptop. All 235 main runs and all 187 scan runs are complete, and no run diverged. The analysis stage has been run once on the real results. Its tables and figures are in `results/analysis/`.
+The design is settled. The code is written and tested. The full experiment has finished on the user's laptop. All 235 main runs and all 187 scan runs are complete, and no run diverged. The analysis stage has been run on the real results. Its tables and figures are in `results/analysis/`.
 
 The code that produced the results is the commit `b4ade25` and its predecessors. All 150 unit tests passed on that commit. They were run on Linux with Python 3.10 and torch 2.2.2. The user ran the smoke test and the long run on the laptop, and the user starts every stage. The script never runs git.
 
-The results folder `results/` holds about 175 MB, and most of this is the final weights, at about 0.4 MB per run. The final weights of the scan and main runs are committed to git. The other files under `results/` (the JSON and CSV files, the calibration and the analysis outputs) are not tracked.
+The results folder `results/` holds about 175 MB, and most of this is the final weights, at about 0.4 MB per run. The results are committed to git, including the final weights of the scan and main runs. Checkpoints and the smoke run are not tracked.
 
 ## 2. Record of the run
 
@@ -64,7 +61,7 @@ After the run, the following checks were made on the laptop files.
 - `selected_rates.json` is complete. No cell needs an extra rate, no cell is missing, and no cell diverged at every rate.
 - The table `diverged_runs.csv` is empty.
 
-The following checks were not made. The analysing agent may make them if they matter.
+The following checks were made later, and all passed. They are recorded in `analysis_findings.md`.
 - A check that the validation bpc in each `log.csv` ends with the value in `result.json`.
 - A check of the stored weights, for example by reloading one `final.pt` and recomputing its validation bpc.
 - A comparison of the calibration constants with the stored statistics of the weights after training.
@@ -124,41 +121,12 @@ The tests are defined in `design_details.md`, section 9. The exact form of test 
 These points come from the design and from the run. Each can affect how a result should be read.
 
 1. **The learning rates are almost the same in all cells.** The scan chose 3e-3 for 46 of the 47 cells. The grid has steps of a factor of about 3, and the best rate lies between 1e-3 and 1e-2. The claim that the rate was tuned per arm is therefore weak. Differences between arms may still depend on how far each arm's own optimum is from 3e-3. The scan table shows the bpc at the neighbouring rates. The user has decided that no finer scan is made. All conclusions rest on the run that exists.
-2. **The rates were chosen on the validation set that the results are reported on.** The scan used a seed that is not one of the five final seeds. The write-up must say this.
+2. **The rates were chosen on the validation set that the results are reported on.** The scan used a seed that is not one of the five final seeds. The paper says this.
 3. **Calibration matches the spread of the scores at initialisation only.** The learned scale beta and the weights change during training. The dot product depends quadratically on the scale of the query vectors, and a distance depends linearly on it. The diagnostics hold the learned scale, the largest logit, the entropy and the norms of the queries and keys, so that any later drift can be examined.
 4. **The epsilon is far below the float32 resolution of the typical sum.** It acts only for near-exact matches. The floors that the design lists (about 3 percent at p = 8) hold for the distance at an exact match and not for typical pairs.
 5. **The baseline is non-standard in two ways.** The diagonal is masked, and the query and key matrices are tied. The arm `dot_untied_unmasked` at D = 16 measures the effect of the mask together with the untying. The arm `dot_untied` measures the effect of tying.
 6. **At D = 2 the arms p = 1 and p = infinity have the same expressive power.** Any difference between them at D = 2 reflects optimisation.
-7. **The design makes no claim about underfitting.** The final training loss in `result.json` is in nats, and the validation bpc is in bits. For example, the cell `dot_tied_D2` seed 1 has a training loss of 1.428 nats, which is 2.060 bits, and a validation bpc of 2.352. The gap between the two is about 0.3 bits. If the write-up says anything about fit, it must check all cells first.
-8. **Five seeds give wide intervals.** The smallest detectable difference is about 0.02 bpc without a correction, and about 0.03 to 0.05 bpc with the Holm correction. The single-seed values are in the tables and should be shown with every summary.
+7. **The design makes no claim about underfitting.** The final training loss in `result.json` is in nats, and the validation bpc is in bits. For example, the cell `dot_tied_D2` seed 1 has a training loss of 1.428 nats, which is 2.060 bits, and a validation bpc of 2.352. The gap between the two is about 0.3 bits. Any statement about fit needs a check of all cells first.
+8. **Five seeds give wide intervals.** The smallest detectable difference is about 0.02 bpc without a correction, and about 0.035 bpc with the Holm correction. The single-seed values are in the tables and should be shown with every summary.
 9. **The uniform control is a descriptive scale only.** It is not entered into any test. The two untied arms are not part of test 1, 3, 4 or 5.
 11. **The scan runs are not a sixth seed.** They use the seed 100 and they were part of the selection of the rates. They must not be pooled with the main results.
-
-## 7. What the write-up must state
-
-The list is in `design_details.md`, section 10. The files that supply the numbers are these.
-- The chosen rates and the full scan table: `chosen_rates.csv` and `scan_table.csv`.
-- The calibration constants and the epsilon for each cell: `calibration_summary.csv`.
-- Any diverged arm: `diverged_runs.csv`. It is empty.
-- The learned scales and attention statistics: `diagnostics.json` of each run.
-
-The write-up should rely on `project_outline.md` and `design_details.md` for the question, the background, the design and the equations. It should be written in formal prose with short clauses that can be read on their own. Details, tests and caveats are added only if they change a conclusion or a claim that the reader must trust.
-
-## 8. Working rules
-
-These rules come from the user and apply to the analysing agent.
-- The design in the outline and in the design details is settled. Do not change it. If something looks wrong or ambiguous, ask the user.
-- Ignore the folder `shelved/`. Do not read it, search it or draw on it. Ignore the version-1 code archive in the project memory.
-- Do not start any training run, scan or pilot. The analysis stage may be rerun freely, because it only reads results.
-- Do not modify files in `results/` other than `results/analysis/`. The run folders are the record of the experiment.
-- Commit locally only if the user asks, and do not push.
-- Discuss decisions carefully and in detail. Give the context for each option. Do not move too fast or write tersely.
-- Do not add extra analyses, robustness checks, caveats or options by default. For each extra, state what it would add and what it would cost the reader, and recommend leaving it out unless it changes a conclusion. When the user decides that an extra is not needed, drop it.
-- Write documents in formal prose. Each clause should be understood on its own. Avoid long sentences with stacked dependent clauses.
-
-## 9. Open items
-
-- The final weights are committed. The rest of `results/` is untracked, and the user decides whether to commit it.
-- The equivalence margin of test 6 is not chosen.
-- Whether the recall task (MQAR) is needed is to be decided after the user has seen the results.
-- The outline and the design details still describe the experiment in the future tense in places. They should be brought up to date when the write-up is produced.

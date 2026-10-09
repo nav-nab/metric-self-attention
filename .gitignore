@@ -4,10 +4,15 @@ __pycache__/
 .pytest_cache/
 # run directories hold final weights, checkpoints and logs; keep summaries (results/**/*.json except per-run) in git
 **/results/*/*/ckpt.pt
-# final weights are committed for the live project; the shelved snapshot's weights stay untracked
-shelved/**/final.pt
 **/results/**/*.tmp
 .DS_Store
 _sync/
 # the smoke run writes into results/smoke/ and is never committed
 results/smoke/
+# LaTeX build files
+paper/*.aux
+paper/*.log
+paper/*.out
+paper/*.synctex.gz
+paper/*.fls
+paper/*.fdb_latexmk

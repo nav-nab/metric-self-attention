@@ -1,6 +1,6 @@
 # Metric self-attention: implementation plan
 
-This is the third document. It follows `project_outline.md` and `design_details.md`, which fix what is run. This document fixes how the code is organised. It was the brief for the agent that wrote the code. The code is written and tested, and the full experiment has been run. Section 14 records the run. `results_guide.md` describes the results.
+This is the third document. It follows `project_outline.md` and `design_details.md`, which fix what is run. This document fixes how the code is organised. The code is written and tested, and the full experiment has been run. Section 14 records the run. `results_guide.md` describes the results.
 
 Items marked **Requirement** were requested by the user. Items marked **Approved** were proposed by Claude and approved by the user on 2026-10-05. Section 11 lists details that the documents leave to the implementing agent, together with the rules for working on this project.
 
@@ -134,7 +134,7 @@ The unit tests check the following.
 6. The analysis code, tested on invented results and not on real runs.
 7. The long run, started by the user.
 
-## 11. Further details and working rules for the implementing agent
+## 11. Further details and working rules
 
 **Details the documents do not fix.** Section 11 gives defaults. The agent may choose another standard value. It then records the choice in section 13 and tells the user, and it flags any choice that could affect the conclusions.
 
@@ -152,15 +152,13 @@ The unit tests check the following.
 
 **Working rules.**
 - The design in `project_outline.md` and `design_details.md` is settled. The agent does not change it. If something looks wrong or ambiguous, the agent asks the user.
-- The agent ignores the `shelved/` folder, and it does not use the version-1 code kept in the project memory.
 - Unit tests may be run freely. A smoke run on the user's laptop, the learning-rate scan and the main experiment are run only when the user agrees. The user starts the long run.
 - The agent commits locally and does not push. It keeps the three documents in step with the code, and it writes documents in formal prose with short, self-contained clauses.
 - Complex extras are not added by default. The write-up has to be understood by human readers.
 
-## 12. Items that still need the user
+## 12. Open items
 
-- Nothing is open for the code. The long run has finished. The remaining items are the interpretation of the results and the write-up, which are described in `results_guide.md`.
-- Review of any choice in section 13 that the agent flags.
+- None for the code. The long run has finished, and `results_guide.md` describes the results.
 
 ## 13. Coding decisions (filled in by the implementing agent)
 

@@ -1,6 +1,6 @@
 # Metric self-attention: head size and the choice of p
 
-**Status: the experiment has been run, and the results are being analysed.** Last updated 2026-10-08. All design issues are settled, and one detail is deferred (an equivalence margin that is needed only if an equivalence claim is made). The project was rebuilt from scratch against this design. The code follows `implementation_plan.md`, and the full run has finished. `results_guide.md` describes the results. The sections below are written as they were before the run, and they will be brought up to date with the write-up. The earlier version of the project is kept in `shelved/` as a record.
+**Status: the experiment has been run and analysed.** The sections below are written as they were before the run, so they describe the experiment in the future tense in places. The code follows `implementation_plan.md`, `results_guide.md` describes the results, and the paper in `paper/` reports them.
 
 This is the first of two documents. It gives the question, the background, the motivation and the shape of the experiment. The second, `design_details.md`, gives the settled decisions and the reasoning behind them, and should be read after this one. This outline is written for a reader who has not seen the project. It keeps the pilot results that bear on the central question and leaves out the rest.
 
@@ -52,7 +52,7 @@ Three geometric facts motivate the design. They are reasoning, not results.
 
 **Varying D.** Only the query-key dimension of each head is shrunk. The value width stays at 16 per head, so the rest of the model is unchanged. The grid is D = 2, 4, 8, 12 and 16, where D = 16 is the default head size of the model (width 64 divided by 4 heads). D = 1 is skipped, because all L^p arms coincide there.
 
-**The recall task is shelved.** A synthetic recall task (MQAR) was considered as a controlled setting where head size and context size interact. It is shelved as of 2026-10-05. The language model is run by itself first, and the full results decide whether the recall task is needed.
+**The recall task.** A synthetic recall task (MQAR) was considered as a controlled setting where head size and context size interact. It was set aside, and the language model is run by itself.
 
 **Fairness safeguards.**
 - **Pairing.** Every arm with the same seed (the number that fixes randomness) sees the same data and starts from the same shared parameters, so differences are paired.
@@ -77,7 +77,7 @@ These are not part of the planned experiment. They are recorded so that they can
 - **Relative position bias.** Replace the learned absolute positions by a learned bias on the logit that depends on the distance between two positions. Run a reduced set of arms (the tied dot product and p = 1, 2 and infinity) with a few seeds. This would test whether the conclusions depend on the choice of absolute positions, which is a stated limitation. The bias adds its own spread to the logits, so the calibration would need rethinking. The user dropped this run from the project on 2026-10-05.
 - **A longer context.** Repeat a reduced set of arms at a context of 128 characters, for example the tied dot product, L2 and L-infinity at D = 2 and 4. A longer context gives each query more keys, which could widen any gap at small D.
 - **Normalised queries and keys.** An ablation with query-key normalisation, to be run only if some arm turns out to be unstable.
-- **The recall task.** The shelved recall task (MQAR) could be revived after the language-model results are seen, if a controlled setting for the head-size effect is wanted.
+- **The recall task.** The recall task (MQAR) could be used if a controlled setting for the head-size effect is wanted.
 - **Savings at inference.** If a distance head works at a very small D, the key cache could be smaller at inference time.
 
 The settled decisions, the open items and the reasoning behind each decision are in `design_details.md`.

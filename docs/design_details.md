@@ -20,9 +20,8 @@ Equations are written in LaTeX. Figures are drawn by `docs/figures/make_figures.
 
 ## 1. Status
 
-The design is settled. The code is written and the full run has finished. `results_guide.md` is the record of the run. This document is kept as it was before the run, so its estimates of cost and noise are not the measured values. The code is written against `implementation_plan.md`. One detail is deferred: the equivalence margin of test 6 in section 9. It is needed only if the write-up claims that two arms are equivalent. All other points were confirmed by the user, and section 12 lists them.
+This document records the design as it was settled before the run. The code was written against `implementation_plan.md`, and the full run has finished. `results_guide.md` is the record of the run. The estimates of cost and noise below are the values from before the run, not the measured ones. The equivalence margin of test 6 in section 9 was never chosen, because the paper makes no equivalence claim. Section 12 lists the decisions.
 
-Nothing is run until the user agrees. Smoke tests of a few steps are the only exception, and they are part of writing the code.
 
 ## 2. The experiment at a glance
 
@@ -211,13 +210,13 @@ Each item restates a decision above.
 
 ## 11. History of the design
 
-These paragraphs record earlier decisions that shaped the present design. The first version of the project, including its code and pilot, is kept in `shelved/` as a record and is not part of the live project.
+These paragraphs record earlier decisions that shaped the present design. An earlier version of the project is not part of this repository.
 
 **Head-size grid.** The grid of head sizes is D = 2, 4, 8, 12 and 16. The user added D = 8 and D = 12 to the earlier first round of D = 2 and 4 beside the default D = 16. D = 1 is skipped, because all L^p arms coincide there.
 
-**Shelving of the recall task.** The user shelved the recall task (MQAR). The language model is run by itself first. The full results then decide whether the recall task is needed.
+**Recall task.** A synthetic recall task (MQAR) was considered as a controlled setting for the head-size effect and was set aside. The language model is run by itself.
 
-**Restart from scratch.** The user shelved all of the version 1 code, including the language-model code, the pilot report and the pilot results, in `shelved/pilot_v1/`. The project is being rebuilt from scratch against the outline and these details. Two implementation choices of version 1 had not been approved by the user, namely r = 10^-12 and the direct p = 2 kernel. The user approved both on the same day. The grid of nine arms was confirmed on that day too.
+**Restart from scratch.** An earlier version of the project, with its code and a pilot, was discarded and the project was rebuilt against the outline and these details. Two implementation choices of that version were not yet approved, namely r = 10^-12 and the direct p = 2 kernel. Both were approved on 2026-10-05, together with the grid of nine arms.
 
 ## 12. Decision record
 
