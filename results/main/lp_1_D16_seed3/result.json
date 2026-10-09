@@ -1,0 +1,15 @@
+{
+ "D": 16,
+ "arm": "lp_1",
+ "diverged": false,
+ "diverged_reason": null,
+ "final_train_loss": 1.4097501277923583,
+ "final_val_bpc": 2.360132894497654,
+ "lr": 0.003,
+ "resumes": 0,
+ "seed": 3,
+ "stage": "main",
+ "steps": 4000,
+ "steps_done": 4000,
+ "wall_time_s": 1334.7792904369999
+}
