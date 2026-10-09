@@ -1,3 +1,5 @@
+<img src="assets/avatar.svg" alt="An eye whose upper lid is a ruler: the project avatar" align="right" width="190">
+
 # Can a distance replace the dot product in attention?
 
 ### 📄 [**Read the paper: Distance attention at small head sizes for a character-level language model (PDF)**](paper/main.pdf)
