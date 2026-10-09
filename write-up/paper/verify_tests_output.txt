@@ -1,0 +1,5 @@
+max abs difference, stored tables vs independent recomputation (the CSV files carry about six significant digits): {'mean_ci': 9.2e-06, 't': 0.028, 'p': 0.00055}
+Holm-significant cells: 15 of 35  by D: {2: 7, 4: 3, 8: 2, 12: 2, 16: 1}
+positive mean gaps: 34 of 35 ; negative Holm-significant: 0
+uncorrected p<0.05: 24
+test3 per-arm negative means: 8 of 8 ; p<.05: ['lp_1.5', 'lp_2', 'lp_3', 'lp_4', 'lp_8', 'mean of the seven arms']
