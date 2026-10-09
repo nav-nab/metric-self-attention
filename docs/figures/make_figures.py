@@ -28,9 +28,9 @@ def save(fig, name):
 # ---------------------------------------------------------------- figure 1
 def fig_grid():
     D = [2, 4, 8, 12, 16]
-    rows = [("tied dot product (control)", ORANGE), ("L^1", BLUE), ("L^1.5", BLUE),
-            ("L^2", BLUE), ("L^3", BLUE), ("L^4", BLUE), ("L^8", BLUE),
-            ("L^inf", BLUE), ("untied dot product (reference)", ORANGE),
+    rows = [("tied dot product (control)", ORANGE), (r"$\ell^{1}$", BLUE), (r"$\ell^{1.5}$", BLUE),
+            (r"$\ell^{2}$", BLUE), (r"$\ell^{3}$", BLUE), (r"$\ell^{4}$", BLUE), (r"$\ell^{8}$", BLUE),
+            (r"$\ell^{\infty}$", BLUE), ("untied dot product (reference)", ORANGE),
             ("uniform control", GREY), ("unmasked untied dot product", VIOLET)]
     fig, ax = plt.subplots(figsize=(8.2, 5.4))
     n = len(rows)
@@ -92,7 +92,7 @@ def fig_geometry():
         ax.contour(X, Y, dist(p), levels=[0.5, 1.0, 1.5, 2.0], colors=BLUE, linewidths=1)
         ax.plot([0], [0], "o", color=INK, ms=4)
         ax.text(0.08, 0.1, "query", fontsize=8.5, color=INK)
-        ax.set_title(f"L^p distance, p = {t}\nlevel sets are balls", fontsize=10)
+        ax.set_title(f"$\\ell^p$ distance, p = {t}\nlevel sets are balls", fontsize=10)
     for ax in axes:
         ax.set_aspect("equal")
         ax.set_xlim(-lim, lim)
@@ -205,7 +205,7 @@ def fig_protocol():
     box(29, 22, 24, 13, "each cell takes the rate\nwith the lowest\nvalidation bpc\n(diverged rates excluded)")
     box(29, 3, 24, 13, "only if the best rate is at\nan end of the grid: one more\nrun, a factor of 3 beyond\n(1e-3 or 9e-2)")
     box(55, 22, 24, 13, "47 cells x 5 final seeds\nat the chosen rate\n235 runs, about 14 h")
-    box(82, 22, 24, 13, "analysis (section 9)\nand write-up. Rates and\nthe scan table are\nreported", fc="#fbeee8", ec=ORANGE)
+    box(82, 22, 24, 13, "analysis (section 9)\nand paper. Rates and\nthe scan table are\nreported", fc="#fbeee8", ec=ORANGE)
     arrow(24.4, 28.5, 28.6, 28.5)
     arrow(53.4, 28.5, 54.6, 28.5)
     arrow(41, 21.6, 41, 16.4)

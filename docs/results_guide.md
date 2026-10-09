@@ -43,7 +43,7 @@ The mean wall-clock time of one main run, in minutes, was as follows. The scan r
 | lp_1 | 16.5 | lp_4 | 26.8 |
 | lp_2 | 22.1 | lp_8 | 31.6 |
 
-The run was interrupted at least once. Six scan runs and nine main runs were resumed from a checkpoint. The field `resumes` in `result.json` counts the resumptions of each run. The tests show that a resumed run agrees with an uninterrupted run to better than 1e-6 in the final bpc. The analysing agent may check this against the real data by comparing resumed and non-resumed runs.
+The run was interrupted at least once. Six scan runs and nine main runs were resumed from a checkpoint. The field `resumes` in `result.json` counts the resumptions of each run. The tests show that a resumed run agrees with an uninterrupted run to better than 1e-6 in the final bpc. The nine resumed main runs are not outliers (`analysis_findings.md`).
 
 **Learning-rate scan.** The scan used the seed 100. The base grid was 3e-3, 1e-2 and 3e-2. The extra rate 1e-3 was run for the 46 cells whose best base rate was 3e-3. The extra rate 9e-2 was never needed. The chosen rate was 3e-3 in all 46 cells other than the uniform control. The uniform control chose 1e-2.
 
@@ -94,7 +94,7 @@ The final training loss is the mean over the last 100 steps and it is in nats. T
 | `chosen_rates.csv` | the chosen rate and the scan bpc at each of the five rates |
 | `diverged_runs.csv` | the diverged main runs. It is empty. |
 | `test1_interaction.csv` | the F-test of the D x p interaction: F, df1, df2, p, the two sums of squares and the removed arms |
-| `test2_gaps.csv` | the paired gap of each L^p arm to the tied dot product at each head size: mean, 95 percent interval, t, p, Holm-adjusted p and the five single-seed gaps. It also has the rows for untied minus tied and unmasked minus masked, which are labelled uncorrected. |
+| `test2_gaps.csv` | the paired gap of each $\ell^p$ arm to the tied dot product at each head size: mean, 95 percent interval, t, p, Holm-adjusted p and the five single-seed gaps. It also has the rows for untied minus tied and unmasked minus masked, which are labelled uncorrected. |
 | `test3_trend.csv` | the slope of the gap per doubling of D, for each arm and for the mean of the seven arms: mean, interval, t, p and the five single-seed slopes |
 | `test4_shape.csv` | the linear and quadratic contrasts along 1/p at each head size, and their slopes on log2 D |
 | `test5_best_probability.csv` | for each head size, the probability that each p has the lowest mean bpc |
@@ -109,18 +109,19 @@ The final training loss is the mean over the last 100 steps and it is in nats. T
 The tests are defined in `design_details.md`, section 9. The exact form of test 1 is in `implementation_plan.md`, section 8.1. The code choices for the other tests are items 23 to 30 of plan section 13. The main points follow.
 
 - The outcome is the final validation bpc. A lower value is better. The seed is a block.
-- The gap of an L^p arm is its bpc minus the bpc of the tied dot product with the same seed and head size. A negative gap means that the distance arm is better.
+- The gap of an $\ell^p$ arm is its bpc minus the bpc of the tied dot product with the same seed and head size. A negative gap means that the distance arm is better.
 - Test 1 is the repeated-measures F-test of the D x p interaction, with 24 and 96 degrees of freedom. It has no correction for sphericity. This was decided by the user.
 - Test 2 gives intervals without a correction and p-values with a Holm correction over the seven arms at one head size.
 - Test 3 has no correction for multiple testing across its eight rows. This was decided by the user. The mean over the seven arms is the primary row.
 - Test 5 enumerates all 126 resamples of the seeds, so it uses no random numbers.
-- Test 6, the equivalence test, is not coded. It is needed only if the write-up claims that two arms are equivalent. Its margin is not chosen. Choosing it needs the user, and the noise level above is the main input.
+- Test 6, the equivalence test, is not coded and was not run, because the paper makes no equivalence claim. Its margin was never chosen.
+- The paper reports tests 2 and 3 and the untied and unmasked contrasts. Tests 1, 4 and 5 are computed by the analyze stage but are not reported.
 
 ## 6. Points to keep in mind when interpreting the results
 
 These points come from the design and from the run. Each can affect how a result should be read.
 
-1. **The learning rates are almost the same in all cells.** The scan chose 3e-3 for 46 of the 47 cells. The grid has steps of a factor of about 3, and the best rate lies between 1e-3 and 1e-2. The claim that the rate was tuned per arm is therefore weak. Differences between arms may still depend on how far each arm's own optimum is from 3e-3. The scan table shows the bpc at the neighbouring rates. The user has decided that no finer scan is made. All conclusions rest on the run that exists.
+1. **The learning rates are almost the same in all cells.** The scan chose 3e-3 for 46 of the 47 cells. The grid has steps of a factor of about 3, and the best rate lies between 1e-3 and 1e-2. The claim that the rate was tuned per arm is therefore weak. Differences between arms may still depend on how far each arm's own optimum is from 3e-3. The scan table shows the bpc at the neighbouring rates. No finer scan was made. All conclusions rest on the run that exists.
 2. **The rates were chosen on the validation set that the results are reported on.** The scan used a seed that is not one of the five final seeds. The paper says this.
 3. **Calibration matches the spread of the scores at initialisation only.** The learned scale beta and the weights change during training. The dot product depends quadratically on the scale of the query vectors, and a distance depends linearly on it. The diagnostics hold the learned scale, the largest logit, the entropy and the norms of the queries and keys, so that any later drift can be examined.
 4. **The epsilon is far below the float32 resolution of the typical sum.** It acts only for near-exact matches. The floors that the design lists (about 3 percent at p = 8) hold for the distance at an exact match and not for typical pairs.

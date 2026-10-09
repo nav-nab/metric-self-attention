@@ -2,7 +2,7 @@
 
 This is the third document. It follows `project_outline.md` and `design_details.md`, which fix what is run. This document fixes how the code is organised. The code is written and tested, and the full experiment has been run. Section 14 records the run. `results_guide.md` describes the results.
 
-Items marked **Requirement** were requested by the user. Items marked **Approved** were proposed by Claude and approved by the user on 2026-10-05. Section 11 lists details that the documents leave to the implementing agent, together with the rules for working on this project.
+Items marked **Requirement** were requested by the user. Items marked **Approved** were proposed by Claude and approved by the user on 2026-10-05. Section 11 lists details that the documents leave open, together with the working rules.
 
 ## 1. Scope
 
@@ -15,7 +15,7 @@ execute_project.py        the single entry point
 msa/
   data.py                 corpus, split, batches, seeds
   model.py                the transformer and the arm switch
-  scores.py               the score functions and the L^p kernel
+  scores.py               the score functions and the $\ell^p$ kernel
   calibrate.py            the calibration constants
   train.py                one run, with checkpointing
   sweep.py                the scan, the rate selection and the main grid
@@ -85,9 +85,11 @@ The analysis reads only the result files. It needs a library for the mixed model
 
 ### 8.1 The F-test of test 1
 
+The analyze stage computes this test. The paper does not report it.
+
 **Status.** The user approved this form on 2026-10-05, and the analysis code follows it.
 
-**Data.** The test uses the final validation bpc of the seven L^p arms. There are five head sizes and five final seeds, so the data are 5 x 5 x 7 = 175 values. Write $y_{s,D,p}$ for the value of seed $s$, head size $D$ and exponent $p$. The two dot arms, the uniform control and the unmasked arm are not part of this test.
+**Data.** The test uses the final validation bpc of the seven $\ell^p$ arms. There are five head sizes and five final seeds, so the data are 5 x 5 x 7 = 175 values. Write $y_{s,D,p}$ for the value of seed $s$, head size $D$ and exponent $p$. The two dot arms, the uniform control and the unmasked arm are not part of this test.
 
 **Model.** The seed is a random block, and $D$ and $p$ are fixed categorical factors. Each cell has one value per seed, so the seed x $D$ x $p$ term is the error:
 
@@ -105,18 +107,18 @@ The test statistic is
 
 $$F = \frac{SS_{D\times p} / \big((N_D-1)(N_p-1)\big)}{SS_{\text{err}} / \big((S-1)(N_D-1)(N_p-1)\big)} .$$
 
-Under the null hypothesis of no interaction, $F$ follows an F distribution with $(N_D-1)(N_p-1) = 24$ and $(S-1)(N_D-1)(N_p-1) = 96$ degrees of freedom. The p-value is the upper tail of that distribution. The write-up reports $F$, the two degrees of freedom and the p-value.
+Under the null hypothesis of no interaction, $F$ follows an F distribution with $(N_D-1)(N_p-1) = 24$ and $(S-1)(N_D-1)(N_p-1) = 96$ degrees of freedom. The p-value is the upper tail of that distribution. The analysis reports $F$, the two degrees of freedom and the p-value.
 
-**Assumptions.** The residuals are assumed to be approximately normal. The test also assumes sphericity, which means equal variances for the differences between the interaction contrasts. Five seeds are too few to check this. The write-up states the assumption. No correction for it is applied. If the user asks for the Greenhouse-Geisser correction, it replaces the p-value and is not reported beside it.
+**Assumptions.** The residuals are assumed to be approximately normal. The test also assumes sphericity, which means equal variances for the differences between the interaction contrasts. Five seeds are too few to check this. The analysis states the assumption. No correction for it is applied. If the user asks for the Greenhouse-Geisser correction, it replaces the p-value and is not reported beside it.
 
-**Missing values.** The test needs a full 5 x 5 x 7 array. If any main run of an L^p arm diverged, the whole exponent $p$ of that run is removed from the test, for all head sizes and all seeds. The degrees of freedom then use the number of remaining exponents $N_p'$. They become $4(N_p'-1)$ and $16(N_p'-1)$. The write-up reports the removed arm and its divergence as a finding. The test is not computed if fewer than two exponents remain.
+**Missing values.** The test needs a full 5 x 5 x 7 array. If any main run of an $\ell^p$ arm diverged, the whole exponent $p$ of that run is removed from the test, for all head sizes and all seeds. The degrees of freedom then use the number of remaining exponents $N_p'$. They become $4(N_p'-1)$ and $16(N_p'-1)$. The analysis reports the removed arm and its divergence as a finding. The test is not computed if fewer than two exponents remain.
 
 **Implementation and check.** The statistic is computed directly from the sums of squares with numpy, and the p-value comes from `scipy.stats.f`. A unit test compares the result with `statsmodels.stats.anova.AnovaRM` on the same balanced data. A second test uses invented data with a known interaction. A third test checks the rule for a removed exponent.
 
 ## 9. Tests
 
 The unit tests check the following.
-- The L^p kernel agrees with a plain float64 version in value and gradient, for every p including infinity.
+- The $\ell^p$ kernel agrees with a plain float64 version in value and gradient, for every p including infinity.
 - The gradient at an exact match is finite for every p, because of the epsilon.
 - The mask is correct, including the exception at position 0.
 - After calibration, the scaled scores of each arm have a standard deviation of 1 on the calibration batches. The tied dot constant satisfies $c\,\sigma_z^2\sqrt{D} \approx 1$, where $\sigma_z^2$ is the measured variance of the coordinates of $z$ (section 13, item 1).
@@ -136,7 +138,7 @@ The unit tests check the following.
 
 ## 11. Further details and working rules
 
-**Details the documents do not fix.** Section 11 gives defaults. The agent may choose another standard value. It then records the choice in section 13 and tells the user, and it flags any choice that could affect the conclusions.
+**Details the documents do not fix.** This section gives defaults. Any other standard value is recorded in section 13, and any choice that could affect the conclusions is flagged there.
 
 - **Data.** The vocabulary is the sorted set of characters of the whole corpus. The training text is the first 90 percent of the characters, and the validation text is the last 10 percent. A training batch is made of random windows of 65 characters, drawn from the training text by a generator that depends on the seed. The inputs are the first 64 characters and the targets are the last 64. The validation windows do not overlap, and a final partial window is dropped.
 - **Seeds.** The five final seeds are 1 to 5. The scan seed is 100. The calibration seed is 999. The data stream and the initial values use separate generators for each seed.
@@ -148,19 +150,19 @@ The unit tests check the following.
 - **Calibration batches.** A fixed set of batches drawn with the calibration seed. The number is chosen so that the constants are stable to about 1 percent.
 - **The uniform control.** It has no query or key projections. All other parts of the model are the same.
 - **Numbers.** Everything is float32. Each worker uses one thread and the multiprocessing method `spawn`.
-- **Result files.** Each run writes `result.json` with the arm, D, seed or scan flag, rate, number of steps, final validation bpc, final training loss, the diverged flag and the wall-clock time. The file format is otherwise the agent's choice.
+- **Result files.** Each run writes `result.json` with the arm, D, seed or scan flag, rate, number of steps, final validation bpc, final training loss, the diverged flag and the wall-clock time. The file format is otherwise left to the implementation.
 
 **Working rules.**
-- The design in `project_outline.md` and `design_details.md` is settled. The agent does not change it. If something looks wrong or ambiguous, the agent asks the user.
-- Unit tests may be run freely. A smoke run on the user's laptop, the learning-rate scan and the main experiment are run only when the user agrees. The user starts the long run.
-- The agent commits locally and does not push. It keeps the three documents in step with the code, and it writes documents in formal prose with short, self-contained clauses.
-- Complex extras are not added by default. The write-up has to be understood by human readers.
+- The design in `project_outline.md` and `design_details.md` is settled and was not changed during the implementation.
+- Unit tests could be run freely. The smoke run, the learning-rate scan and the main experiment were run only with the user's agreement, and the user started the long run.
+- The code never runs git. The documents are written in formal prose with short, self-contained clauses.
+- Complex extras are not added by default, so that the paper can be understood by human readers.
 
 ## 12. Open items
 
 - None for the code. The long run has finished, and `results_guide.md` describes the results.
 
-## 13. Coding decisions (filled in by the implementing agent)
+## 13. Coding decisions
 
 Each item records a choice that the documents leave open, or a detail of the code that the reader may need. Items marked **User** were decided by the user. The other items follow the defaults of section 11, or are small details of the code.
 
@@ -192,7 +194,7 @@ Each item records a choice that the documents leave open, or a detail of the cod
 18. **Rate selection.** A rate that diverged is never chosen. The best rate of the base grid is the lowest bpc among the rates that did not diverge. If it is the lowest or the highest rate of the grid, the cell gets the extra rate 1e-3 or 9e-2. The chosen rate is the best over all rates that did not diverge, including the extra one. Ties go to the lower rate. A cell that diverged at every rate has no rate, and `select` reports it and blocks `main`. The results are written to `selected_rates.json` and `scan_table.csv`.
 19. **Workers.** The runs are started in a pool of four spawned processes with one thread each. The workers ignore Ctrl-C, and the parent stops them and prints how to resume. A run that raises an error writes `error.txt` in its folder, and the other runs go on. The stage then ends with an error that lists the failed runs. Starting the stage again retries them, because they have no `result.json`.
 20. **Order of the runs.** The slowest runs go first. The order uses a fixed table of rough relative costs per arm, scaled by the head size for the distance arms. The table is only a guess. It is used for the order and for the time estimate in the progress line.
-21. **The smoke command.** It uses two cells, the L^8 arm at D = 2 and the tied dot product at D = 4. It runs the calibration with two batches, the scan with its extra runs, the selection and the main stage with two seeds, all at 20 steps with a warm-up of 4 steps. The results go to `results/smoke/`, which is ignored by git. The smoke command has not been run. The analysis will be added to it with step 6, on invented results.
+21. **The smoke command.** It uses two cells, the $\ell^8$ arm at D = 2 and the tied dot product at D = 4. It runs the calibration with two batches, the scan with its extra runs, the selection and the main stage with two seeds, all at 20 steps with a warm-up of 4 steps. The results go to `results/smoke/`, which is ignored by git. The smoke command has not been run. The analysis will be added to it with step 6, on invented results.
 22. **Tests of the stages.** They check the counts of 47 cells, 141 scan runs and 235 main runs, and the rate rule on a table of cases. One test runs all stages on three cells at 6 steps with two worker processes. It checks that a second call starts nothing and that a removed result is the only one that is run again. A last test checks that a failing run is reported and that the others finish.
 
 **Step 6 (the analysis).**
@@ -214,6 +216,6 @@ Each item records a choice that the documents leave open, or a detail of the cod
 
 The user ran the smoke test on 2026-10-05, and it passed. The user then started the full run with the code of commit `b4ade25`. The calibration took two minutes. The scan ran from 2026-10-05 to 2026-10-06, and the main stage ran from 2026-10-06 to 2026-10-07. The analysis stage was run once on the real results on 2026-10-07.
 
-The run needed about 49 hours of elapsed time, and about 37 hours of pure compute with four workers. The estimate of the plan was 23 to 24 hours, with the budget at 48 hours. The mean run took 21 minutes. The estimate had assumed about 14 minutes. The distance arms were slower than the plan assumed, and the L^p arms took 16 to 32 minutes per run.
+The run needed about 49 hours of elapsed time, and about 37 hours of pure compute with four workers. The estimate of the plan was 23 to 24 hours, with the budget at 48 hours. The mean run took 21 minutes. The estimate had assumed about 14 minutes. The distance arms were slower than the plan assumed, and the $\ell^p$ arms took 16 to 32 minutes per run.
 
 Six scan runs and nine main runs were resumed from a checkpoint after an interruption. No run diverged. The scan chose the rate 3e-3 for 46 cells and 1e-2 for the uniform control. The extra rate 1e-3 was run for 46 cells, and the extra rate 9e-2 was not needed. After the run, the code in the repository had no uncommitted change. The detail is in `results_guide.md`.

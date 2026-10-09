@@ -14,7 +14,7 @@ Equations are written in LaTeX. Figures are drawn by `docs/figures/make_figures.
 7. The epsilon, the gradient and the p = 2 kernel
 8. The learning-rate protocol
 9. The statistical plan
-10. What the write-up must state
+10. What the paper must state
 11. History of the design
 12. Decision record
 
@@ -27,7 +27,7 @@ This document records the design as it was settled before the run. The code was 
 
 The project compares ways of scoring a query against a key inside self-attention. Each way is called an **arm**. The head size D is the length of the query and key vectors in each head. The experiment crosses the arms with five values of D.
 
-- The nine **crossed arms** are the tied dot product (the control), seven L^p distances with p in {1, 1.5, 2, 3, 4, 8, infinity}, and the untied dot product (a reference).
+- The nine **crossed arms** are the tied dot product (the control), seven $\ell^p$ distances with p in {1, 1.5, 2, 3, 4, 8, infinity}, and the untied dot product (a reference).
 - Two **extra arms** are not crossed with D. The **uniform control** gives every allowed key the same weight. The **unmasked untied dot product** is the standard transformer score without the diagonal mask, and it is run at D = 16 only.
 - The head sizes are D = 2, 4, 8, 12 and 16.
 
@@ -35,7 +35,7 @@ A **cell** is one combination of an arm and a head size. The crossed arms give 9
 
 ![The experimental grid](figures/fig1_grid.png)
 
-A **run** is one training of one model for 4,000 optimiser steps. The outcome of a run is the validation bits per character (bpc) at the end. Every cell is run for five final seeds. A one-seed learning-rate scan comes first, and section 8 describes it. The scan takes 141 runs, and the main experiment takes 47 x 5 = 235 runs. Cells whose best scan rate lies at the end of the grid get one extra scan run each. The total cost is about 23 to 24 hours on the user's laptop, with an uncertainty of 30 to 40 percent. The budget is about 48 hours.
+A **run** is one training of one model for 4,000 optimiser steps. The outcome of a run is the validation bits per character (bpc) at the end. Every cell is run for five final seeds. A one-seed learning-rate scan comes first, and section 8 describes it. The scan takes 141 runs, and the main experiment takes 47 x 5 = 235 runs. Cells whose best scan rate lies at the end of the grid get one extra scan run each. The total cost is about 23 to 24 hours on the user's laptop, with an uncertainty of 30 to 40 percent. The budget is about 48 hours. The run needed about 37 hours of compute with four workers, as `results_guide.md` records.
 
 The analysis looks at the whole surface of validation bpc over D and p. Section 9 describes it.
 
@@ -56,7 +56,7 @@ The analysis looks at the whole surface of validation bpc over D and p. Section 
 **What is logged.** Each run logs the learned scale of each head, the largest logit, the attention entropy, and the norms of the queries and keys.
 
 **Implementation requirements.**
-- The L^p distance is a custom autograd function. The forward pass works in chunks and saves only the queries, the keys and the output. The backward pass recomputes the coordinate differences chunk by chunk. A plain version is kept in float64 as a reference test.
+- The $\ell^p$ distance is a custom autograd function. The forward pass works in chunks and saves only the queries, the keys and the output. The backward pass recomputes the coordinate differences chunk by chunk. A plain version is kept in float64 as a reference test.
 - The distances are computed in float32.
 - All checks, benchmarks and runs are callable from one execute script. The code is Python scripts and not notebooks.
 - The final weights of every run are saved and committed to git. Training checkpoints are not committed.
@@ -76,21 +76,21 @@ The sums run over the allowed keys, which section 5 defines. Only the definition
 
 $$s_{ij} = \beta_h\, c\; z_i \cdot z_j \quad\text{(tied dot product)}, \qquad s_{ij} = \beta_h\, c\; q_i \cdot k_j \quad\text{(untied dot product)},$$
 
-$$s_{ij} = -\,\beta_h\, c\; d_p(z_i, z_j) \quad\text{(L}^p\text{ arms)}.$$
+$$s_{ij} = -\,\beta_h\, c\; d_p(z_i, z_j) \quad(\ell^p\text{ arms}).$$
 
 The distance is
 
 $$d_p(x, y) = \Big(\sum_{m=1}^{D} |x_m - y_m|^p + \varepsilon\Big)^{1/p} \quad (p < \infty), \qquad d_\infty(x, y) = \max_m |x_m - y_m| .$$
 
-Here $\varepsilon$ is a small number that keeps the gradient finite, and section 7 defines it. The score is minus the distance and not its reciprocal. The distance is the plain distance with the root in every arm, including p = 2. The squared L^2 distance would equal the dot product plus a bias that depends only on the key, because the term depending only on the query cancels in the softmax. The plain L^2 distance has no such reduction, so the tied dot product and the L^2 arm are different controls.
+Here $\varepsilon$ is a small number that keeps the gradient finite, and section 7 defines it. The score is minus the distance and not its reciprocal. The distance is the plain distance with the root in every arm, including p = 2. The squared $\ell^2$ distance would equal the dot product plus a bias that depends only on the key, because the term depending only on the query cancels in the softmax. The plain $\ell^2$ distance has no such reduction, so the tied dot product and the $\ell^2$ arm are different controls.
 
 **Geometry.** A dot product prefers the keys that lie furthest along the direction of the query. Its set of equal scores is a line, and its preferred region is a half-space. A distance prefers the keys nearest to the query, and its sets of equal scores are balls. The ball is a diamond for p = 1, a circle for p = 2, and a square for p = infinity. The outline gives the reasons why this difference may matter more at small D.
 
 ![Level sets of the score of one query](figures/fig2_geometry.png)
 
 Two further points follow from the formula.
-- The L^p distance with p other than 2 depends on the coordinate axes. A learned projection can choose its axes, so the model has some freedom to adapt. The dependence is accepted, and the write-up flags it.
-- In two dimensions the L^1 and L^infinity balls are the same square up to a 45-degree rotation and a scale. The learned projection can supply the rotation. At D = 2 these two arms therefore have equal expressive power, and any difference between them reflects optimisation.
+- The $\ell^p$ distance with p other than 2 depends on the coordinate axes. A learned projection can choose its axes, so the model has some freedom to adapt. The dependence is accepted, and the paper flags it.
+- In two dimensions the $\ell^1$ and $\ell^\infty$ balls are the same square up to a 45-degree rotation and a scale. The learned projection can supply the rotation. At D = 2 these two arms therefore have equal expressive power, and any difference between them reflects optimisation.
 
 **The other arms.**
 - The **untied dot product** measures what tying costs.
@@ -107,7 +107,7 @@ That paper is the source of the masking rule and of its exception. A token may n
 
 The Reformer argument covers only the dot product. The argument for the distance is the project's own geometric reasoning above. A second reason is calibration. The self-key would inflate the measured spread of scores and distort the starting scale. The cost of masking is small, because the residual connection already carries a position's own content to the next layer.
 
-The rule applies to all arms of the language model, including the untied dot product, so that the comparison isolates the score function. The one exception is the unmasked untied dot product, which is run at D = 16 to measure the size of this departure from a standard model. The write-up states that the masking makes the dot-product baseline slightly non-standard.
+The rule applies to all arms of the language model, including the untied dot product, so that the comparison isolates the score function. The one exception is the unmasked untied dot product, which is run at D = 16 to measure the size of this departure from a standard model. The paper states that the masking makes the dot-product baseline slightly non-standard.
 
 ## 6. Calibration of the score scale
 
@@ -147,7 +147,7 @@ When $x = y$ the distance is zero and the factor $d_p^{1-p}$ is infinite. The pr
 
 **p = infinity.** The distance is the largest coordinate difference, computed by a maximum. It has no epsilon and no floor. The gradient goes to the coordinate that attains the maximum, and it is split evenly among coordinates that tie. The gradients are sparse, and the project accepts this as inherent to the metric.
 
-**The p = 2 kernel.** The L^2 distance is computed from the coordinate differences, like every other p. A faster formula exists, which expands $\|x - y\|^2 = \|x\|^2 + \|y\|^2 - 2\,x \cdot y$ and uses a matrix product. It subtracts large numbers that nearly cancel when two vectors are close, and the earlier work found that it lost accuracy at small distances. The project does not use it. The direct computation makes the L^2 arm about three times more expensive than the expansion would. The cost estimates already include this.
+**The p = 2 kernel.** The $\ell^2$ distance is computed from the coordinate differences, like every other p. A faster formula exists, which expands $\|x - y\|^2 = \|x\|^2 + \|y\|^2 - 2\,x \cdot y$ and uses a matrix product. It subtracts large numbers that nearly cancel when two vectors are close, and the earlier work found that it lost accuracy at small distances. The project does not use it. The direct computation makes the $\ell^2$ arm about three times more expensive than the expansion would. The cost estimates already include this.
 
 ## 8. The learning-rate protocol
 
@@ -164,11 +164,11 @@ The best learning rate can depend on the head size and on the arm. A shared rate
 - Where two neighbouring rates differ by less than the seed noise, the choice is arbitrary but harmless, because the loss is flat there.
 - The cost is about 8 hours for the scan and about 14 hours for the main runs on the laptop. The total is about 23 to 24 hours with the extra arms. These are estimates with an uncertainty of 30 to 40 percent.
 
-**What the write-up must say.** The rate of each arm was tuned, so the arms differ in more than the score function. The rate was chosen on the validation set that the results are reported on. The chosen rates and the full scan table go in the write-up.
+**What the paper must say.** The rate of each arm was tuned, so the arms differ in more than the score function. The rate was chosen on the validation set that the results are reported on. The chosen rates and the full scan table go in the paper.
 
 ## 9. The statistical plan
 
-**Notation.** Let $y_{s,D,a}$ be the validation bpc of seed $s$ (one of five), head size $D$ and arm $a$. The seed is a block. Within a seed, all cells share the data stream and the initial values of the common parameters, so comparisons are paired. The L^p arms are placed on the axis $1/p$, with the values 1, 0.67, 0.5, 0.33, 0.25, 0.125 and 0 for p = infinity. The two dot-product arms are references and lie off this axis. The **gap** of an L^p arm to the tied dot product is
+**Notation.** Let $y_{s,D,a}$ be the validation bpc of seed $s$ (one of five), head size $D$ and arm $a$. The seed is a block. Within a seed, all cells share the data stream and the initial values of the common parameters, so comparisons are paired. The $\ell^p$ arms are placed on the axis $1/p$, with the values 1, 0.67, 0.5, 0.33, 0.25, 0.125 and 0 for p = infinity. The two dot-product arms are references and lie off this axis. The **gap** of an $\ell^p$ arm to the tied dot product is
 
 $$g_{s,D,p} = y_{s,D,p} - y_{s,D,\text{tied dot}} .$$
 
@@ -179,7 +179,7 @@ A negative gap means that the distance arm is better. The outline's hypothesis p
 | Test | Question | Quantity and method | Role |
 |---|---|---|---|
 | 1 | Does the effect of p depend on D? | Mixed model $y = \mu + \alpha_D + \gamma_p + (\alpha\gamma)_{D,p} + u_s + e$ with the seed as a random effect. F-test of the D x p interaction. | Primary |
-| 2 | How large is the gap in each cell? | Paired gap $g$ with a confidence interval, for each L^p arm at each D. Holm correction within each D, over the family of seven arms. | Secondary |
+| 2 | How large is the gap in each cell? | Paired gap $g$ with a confidence interval, for each $\ell^p$ arm at each D. Holm correction within each D, over the family of seven arms. | Secondary |
 | 3 | Does the gap change with D? | For each seed and arm, the slope of $g$ on $\log D$. One-sample t-test on the five slopes of each arm. The same test on the gap averaged over the seven arms. | Primary |
 | 4 | What is the shape of the effect of p, and does it change with D? | At each D, linear and quadratic contrasts of the bpc across the axis $1/p$. Then the slope of each contrast on $\log D$. | Secondary |
 | 5 | Which p is best? | Bootstrap over seeds, resampling whole seeds. For each D, the probability that each p has the lowest mean bpc, and the stability of the ranking across D. | Secondary |
@@ -189,22 +189,24 @@ A negative gap means that the distance arm is better. The outline's hypothesis p
 - In test 1, D and p enter as categorical factors. The interaction then has $4 \times 6 = 24$ degrees of freedom in the numerator.
 - In test 3, each arm has one slope per seed, so each t-test uses five slopes and four degrees of freedom.
 - In test 5, five seeds allow only 126 distinct resamples, so the probabilities are coarse. They are reported as rough guides.
-- Test 6 is run only if the write-up claims that two arms are equivalent. The margin $\delta$ is chosen then, from the measured noise.
+- Test 6 is run only if the paper claims that two arms are equivalent. The margin $\delta$ is chosen then, from the measured noise.
 - Gaps outside the Holm family, such as the gap of the untied to the tied dot product, are given as uncorrected intervals and are labelled as such.
-- The uniform control and the two untied arms are not entered into any test. The write-up reports the uniform control's bpc beside the other arms as a qualitative scale.
-- The write-up reports each seed's paired difference next to every summary.
+- The uniform control and the two untied arms are not entered into any test. The paper reports the uniform control's bpc beside the other arms as a qualitative scale.
+- The paper reports each seed's paired difference next to every summary.
 
 **Caveats.** There are only five seeds. The mixed model assumes approximately normal residuals. The spread of bpc may differ across D. The noise level is measured in the main runs.
 
-## 10. What the write-up must state
+**What was carried out.** The paper uses test 2 (cell by cell, Holm within each head size) and test 3 (the slope of the gap on log2 D, with the mean over the seven arms as the primary row). It adds uncorrected contrasts of the untied against the tied dot product at each D, and of the unmasked against the masked untied dot product at D = 16. The analyze stage also computes tests 1, 4 and 5, but the paper does not report them, so it describes the effect of p without tests. Test 6 was not run, because the paper makes no equivalence claim.
 
-Each item restates a decision above.
+## 10. What the paper must state
+
+Each item restates a decision above. The paper states all of them.
 - The scale of the score was not tuned per arm, and the target spread of 1 was chosen by convention (section 6).
 - The diagonal masking departs from a standard language model, so the dot-product baseline is slightly non-standard (section 5).
 - The epsilon puts a floor under the distance. The floor is about 3 percent at p = 8 (section 7).
 - The learning rate was tuned for each arm and each head size, and it was chosen on the validation set that the results are reported on (section 8).
 - The untied arm has one extra projection matrix per head (section 4).
-- The L^p distances with p other than 2 depend on the coordinate axes. This is accepted and flagged (section 4).
+- The $\ell^p$ distances with p other than 2 depend on the coordinate axes. This is accepted and flagged (section 4).
 - The conclusions rest on learned absolute position embeddings. Section 6 of the outline lists a relative-position run as a possible later check.
 - Any arm that diverges is reported as a finding about that metric and is not hidden.
 
@@ -212,7 +214,7 @@ Each item restates a decision above.
 
 These paragraphs record earlier decisions that shaped the present design. An earlier version of the project is not part of this repository.
 
-**Head-size grid.** The grid of head sizes is D = 2, 4, 8, 12 and 16. The user added D = 8 and D = 12 to the earlier first round of D = 2 and 4 beside the default D = 16. D = 1 is skipped, because all L^p arms coincide there.
+**Head-size grid.** The grid of head sizes is D = 2, 4, 8, 12 and 16. The user added D = 8 and D = 12 to the earlier first round of D = 2 and 4 beside the default D = 16. D = 1 is skipped, because all $\ell^p$ arms coincide there.
 
 **Recall task.** A synthetic recall task (MQAR) was considered as a controlled setting for the head-size effect and was set aside. The language model is run by itself.
 
@@ -225,7 +227,7 @@ All decisions below were confirmed by the user, and the last review was on 2026-
 | Decision | Value | Section |
 |---|---|---|
 | Question | How head size D and the choice of p interact, studied on the language model alone | outline |
-| Crossed arms | Tied dot product (control), L^p with p = 1, 1.5, 2, 3, 4, 8, infinity, untied dot product (reference) | 2, 4 |
+| Crossed arms | Tied dot product (control), $\ell^p$ with p = 1, 1.5, 2, 3, 4, 8, infinity, untied dot product (reference) | 2, 4 |
 | Extra arms | Uniform control (a full arm, one cell, five seeds); unmasked untied dot product at D = 16 only | 2, 4 |
 | Head sizes | D = 2, 4, 8, 12, 16. Only the query and key dimension changes. The value width stays 16 per head. | 3 |
 | Tying | Queries and keys tied in every arm except the untied reference | 4 |
@@ -242,5 +244,5 @@ All decisions below were confirmed by the user, and the last review was on 2026-
 | Learning rates | One-seed scan at 3e-3, 1e-2, 3e-2 for every cell, one extra rate at an end, then the main runs at the chosen rate | 8 |
 | Seeds | Five final seeds per cell, plus a scan seed | 3 |
 | Compute | The user's laptop. Final weights committed to git. | 3 |
-| Statistical plan | Tests 1 and 3 primary. Tests 2, 4, 5 secondary. Test 6 only if needed, margin deferred. No permutation tests. The uniform control is a descriptive scale only. | 9 |
-| Recall task | Shelved | 11 |
+| Statistical plan | Tests 1 and 3 primary. Tests 2, 4, 5 secondary. Test 6 only if needed, margin deferred. No permutation tests. The uniform control is a descriptive scale only. Used in the paper: tests 2 and 3, with the untied and unmasked contrasts. | 9 |
+| Recall task | Set aside | 11 |

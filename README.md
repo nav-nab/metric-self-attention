@@ -37,7 +37,7 @@ The outcome is validation bits per character.
 | Path | Content |
 |---|---|
 | [`paper/`](paper/) | The paper (`main.tex`, [`main.pdf`](paper/main.pdf)), its figures and tables, and the scripts that build them. |
-| [`docs/`](docs/) | The design record: outline, design details, implementation plan, results guide and analysis findings. Read them in that order. |
+| [`docs/`](docs/) | The design record, written during the project and updated after the run: outline, design details, implementation plan, results guide and analysis findings. Read them in that order. |
 | [`msa/`](msa/) | The code: scores, model, training, calibration, sweep and analysis. |
 | [`tests/`](tests/) | The unit tests. |
 | [`results/`](results/) | Calibration constants, the learning-rate scan, all 235 runs with final weights, and the analysis tables and figures. |
